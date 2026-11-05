@@ -12,6 +12,8 @@ export type User = {
 
 export type Auth = {
     user: User;
+    is_admin: boolean;
+    is_approved: boolean;
 };
 
 export type Passkey = {

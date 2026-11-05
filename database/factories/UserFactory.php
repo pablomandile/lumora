@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\ApprovalStatus;
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -33,7 +35,33 @@ class UserFactory extends Factory
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
+            'role' => UserRole::User,
+            'approval_status' => ApprovalStatus::Approved,
+            'approved_at' => now(),
         ];
+    }
+
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Admin,
+        ]);
+    }
+
+    public function pending(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'approval_status' => ApprovalStatus::Pending,
+            'approved_at' => null,
+        ]);
+    }
+
+    public function rejected(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'approval_status' => ApprovalStatus::Rejected,
+            'approved_at' => null,
+        ]);
     }
 
     /**

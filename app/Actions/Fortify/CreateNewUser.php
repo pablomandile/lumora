@@ -4,7 +4,11 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\Enums\ApprovalStatus;
+use App\Enums\UserRole;
 use App\Models\User;
+use App\Notifications\NewUserRegistered;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
@@ -24,10 +28,25 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
-        return User::create([
+        $user = User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
         ]);
+
+        // El email configurado como admin entra directo, sin esperar aprobación.
+        if (strcasecmp($user->email, (string) config('lumora.admin_email')) === 0) {
+            $user->forceFill([
+                'role' => UserRole::Admin,
+                'approval_status' => ApprovalStatus::Approved,
+                'approved_at' => now(),
+            ])->save();
+
+            return $user;
+        }
+
+        Notification::send(User::admins()->get(), new NewUserRegistered($user));
+
+        return $user;
     }
 }

@@ -11,15 +11,17 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Datos de desarrollo: el admin y un par de usuarios para probar la aprobación.
+     * En producción el admin se crea registrándose con LUMORA_ADMIN_EMAIL.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        User::factory()->admin()->create([
+            'name' => 'Pablo Mandile',
+            'email' => config('lumora.admin_email'),
         ]);
+
+        User::factory()->create(['name' => 'Usuaria Aprobada', 'email' => 'aprobada@example.com']);
+        User::factory()->pending()->create(['name' => 'Usuario Pendiente', 'email' => 'pendiente@example.com']);
     }
 }
