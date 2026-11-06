@@ -36,18 +36,37 @@ Para saber qué placa tenés: `nvidia-smi` en una terminal.
 
 ---
 
-## 1. Instalar ComfyUI (versión portable)
+## 1. Instalar ComfyUI
+
+Hay dos formas. Con las dos, ComfyUI queda escuchando en `http://127.0.0.1:8188`, que es donde lo
+busca el gateway.
+
+### Opción A: Comfy Desktop (la que se usa en la PC de Pablo)
+
+1. Bajá el instalador de **https://www.comfy.org/download**. Ojo: `comfyui.com` **no** es el sitio
+   oficial.
+2. Instalalo y creá una instancia. Cuando ofrezca bajar modelos (MOSS-Image, Nano Banana, Krea,
+   Qwen…), tocá **Skip & Install**: ninguno es Z-Image, los locales no entran en 12 GB y Nano Banana
+   se paga con créditos.
+3. Desktop guarda todo en `%LOCALAPPDATA%\Comfy-Desktop\ComfyUI-Shared\`: los modelos en `models\`
+   y las imágenes en `output\`. ComfyUI responde solo mientras la app está abierta.
+   Con Desktop **no** se usa `iniciar-comfyui.bat`.
+
+### Opción B: versión portable
 
 1. Descargá **ComfyUI_windows_portable_nvidia.7z** de la última versión en
    https://github.com/Comfy-Org/ComfyUI/releases
 2. Descomprimilo en `C:\ComfyUI_windows_portable` (con [7-Zip](https://www.7-zip.org/)).
 3. Actualizalo: doble clic en `C:\ComfyUI_windows_portable\update\update_comfyui.bat`.
    Hace falta una versión reciente para que reconozca los archivos int8.
+4. Para arrancarlo, ejecutá `iniciar-comfyui.bat`. Si ComfyUI quedó en otra carpeta, editá la
+   línea `set COMFY_DIR=...`.
 
 ### Modelos
 
-Descargá estos 3 archivos y ponelos en las carpetas indicadas, dentro de
-`C:\ComfyUI_windows_portable\ComfyUI\models\`:
+Descargá estos 3 archivos y ponelos en las carpetas indicadas, dentro de la carpeta `models`
+(Desktop: `%LOCALAPPDATA%\Comfy-Desktop\ComfyUI-Shared\models\`; portable:
+`C:\ComfyUI_windows_portable\ComfyUI\models\`):
 
 | Archivo | Carpeta | Tamaño |
 |---|---|---|
@@ -63,9 +82,8 @@ Descargá estos 3 archivos y ponelos en las carpetas indicadas, dentro de
 
 ### Probar ComfyUI solo
 
-1. Ejecutá `iniciar-comfyui.bat` (está en esta carpeta). Si ComfyUI no quedó en
-   `C:\ComfyUI_windows_portable`, editá la línea `set COMFY_DIR=...`.
-2. Abrí http://127.0.0.1:8188, elegí **Workflow → Browse Templates → Image → Z-Image Turbo**,
+1. Abrí Comfy Desktop, o ejecutá `iniciar-comfyui.bat` si usás la portable.
+2. En ComfyUI, elegí **Workflow → Browse Templates → Image → Z-Image Turbo**,
    seleccioná los archivos de arriba en los nodos de carga y apretá **Run**.
 3. Si sale una imagen, ComfyUI está listo. Anotá cuántos segundos tardó.
 
