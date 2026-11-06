@@ -1,0 +1,14 @@
+# Solo para el método B (túnel creado por línea de comandos).
+# Copialo como C:\Users\<vos>\.cloudflared\config.yml y reemplazá <TUNNEL_ID> y <usuario>.
+tunnel: <TUNNEL_ID>
+credentials-file: C:\Users\<usuario>\.cloudflared\<TUNNEL_ID>.json
+
+ingress:
+  # Lumora → gateway de imágenes
+  - hostname: lumora-gpu.bambudev.com.ar
+    service: http://127.0.0.1:8766
+  # Escribelo → worker de Whisper/Ollama (opcional: reemplaza al quick tunnel)
+  - hostname: escribelo-gpu.bambudev.com.ar
+    service: http://127.0.0.1:8765
+  # Todo lo demás: 404
+  - service: http_status:404
