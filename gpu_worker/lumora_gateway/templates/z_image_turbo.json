@@ -2,12 +2,19 @@
     "1": {
         "class_type": "UNETLoader",
         "_meta": { "title": "Modelo de difusión" },
-        "inputs": { "unet_name": "z_image_turbo_int8_convrot.safetensors", "weight_dtype": "default" }
+        "inputs": {
+            "unet_name": "z_image_turbo_int8_convrot.safetensors",
+            "weight_dtype": "default"
+        }
     },
     "2": {
         "class_type": "CLIPLoader",
         "_meta": { "title": "Text encoder (Qwen3 4B)" },
-        "inputs": { "clip_name": "qwen_3_4b_fp8_mixed.safetensors", "type": "lumina2", "device": "default" }
+        "inputs": {
+            "clip_name": "qwen_3_4b_fp8_mixed.safetensors",
+            "type": "lumina2",
+            "device": "default"
+        }
     },
     "3": {
         "class_type": "VAELoader",

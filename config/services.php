@@ -28,6 +28,17 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+    | Gateway de la PC con la placa (gpu_worker/), detrás del túnel de
+    | Cloudflare. La URL y el token se pueden pisar desde Ajustes del admin.
+    */
+    'lumora_gpu' => [
+        'url' => env('LUMORA_GPU_URL'),
+        'token' => env('LUMORA_GPU_TOKEN'),
+        'timeout' => (int) env('LUMORA_GPU_TIMEOUT', 20),
+        'connect_timeout' => (int) env('LUMORA_GPU_CONNECT_TIMEOUT', 5),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Menu, Search, Users } from '@lucide/vue';
+import {
+    BookOpen,
+    Folder,
+    LayoutGrid,
+    Menu,
+    Search,
+    SlidersHorizontal,
+    Users,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
+import GpuStatusBadge from '@/components/GpuStatusBadge.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,6 +45,7 @@ import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { getInitials } from '@/composables/useInitials';
 import { toUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import { index as adminSettings } from '@/routes/admin/settings';
 import { index as adminUsers } from '@/routes/admin/users';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
@@ -61,7 +71,14 @@ const mainNavItems = computed<NavItem[]>(() => [
         icon: LayoutGrid,
     },
     ...(auth.value.is_admin
-        ? [{ title: 'Usuarios', href: adminUsers(), icon: Users }]
+        ? [
+              { title: 'Usuarios', href: adminUsers(), icon: Users },
+              {
+                  title: 'Ajustes',
+                  href: adminSettings(),
+                  icon: SlidersHorizontal,
+              },
+          ]
         : []),
 ]);
 
@@ -193,6 +210,7 @@ const rightNavItems: NavItem[] = [
                 </div>
 
                 <div class="ml-auto flex items-center space-x-2">
+                    <GpuStatusBadge />
                     <div class="relative flex items-center space-x-1">
                         <Button
                             variant="ghost"

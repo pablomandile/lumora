@@ -84,8 +84,8 @@ class OllamaClient:
         self.base_url = base_url
         self.http = client
 
-    async def loaded_models(self) -> list[str]:
-        r = await self.http.get(f"{self.base_url}/api/ps", timeout=3)
+    async def loaded_models(self, timeout: float = 3) -> list[str]:
+        r = await self.http.get(f"{self.base_url}/api/ps", timeout=timeout)
         r.raise_for_status()
         return [m.get("name") or m.get("model") for m in r.json().get("models", [])]
 

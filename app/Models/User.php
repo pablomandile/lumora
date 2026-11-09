@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -101,6 +102,18 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     /**
      * Imágenes por día que puede generar. null = sin límite (admin).
      */
+    /** @return HasMany<Generation, $this> */
+    public function generations(): HasMany
+    {
+        return $this->hasMany(Generation::class);
+    }
+
+    /** @return HasMany<Image, $this> */
+    public function images(): HasMany
+    {
+        return $this->hasMany(Image::class);
+    }
+
     public function effectiveDailyQuota(): ?int
     {
         if ($this->isAdmin()) {

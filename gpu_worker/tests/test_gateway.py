@@ -33,8 +33,9 @@ def settings(**over) -> Settings:
 class FakeBackends:
     """Simula las rutas de ComfyUI y de Ollama que usa el gateway."""
 
-    def __init__(self, fail: bool = False, vram_free_gb: float = 10.0, finish_after: int = 2):
+    def __init__(self, fail: bool = False, vram_free_gb: float = 10.0, finish_after: int = 2, comfy_down: bool = False):
         self.fail = fail
+        self.comfy_down = comfy_down
         self.finish_after = finish_after
         self.vram_free = vram_free_gb * 1024**3
         self.prompts: dict[str, dict] = {}
@@ -49,6 +50,8 @@ class FakeBackends:
             if path == "/api/generate":
                 self.unloaded.append(json.loads(request.content)["model"])
                 return httpx.Response(200, json={})
+        if host != "ollama" and self.comfy_down:
+            raise httpx.ConnectError("ComfyUI cerrado")
         if path == "/system_stats":
             return httpx.Response(200, json={
                 "system": {"comfyui_version": "0.30.0"},
@@ -212,6 +215,13 @@ def test_invalid_generate_returns_422():
         r = c.post("/generate", headers=AUTH, json={"prompt": "x", "width": 1000})
     assert r.status_code == 422
     assert "múltiplo" in r.json()["detail"]
+
+
+def test_generate_returns_503_when_comfyui_is_closed():
+    with client_for(FakeBackends(comfy_down=True)) as c:
+        r = c.post("/generate", headers=AUTH, json={"prompt": "x"})
+    assert r.status_code == 503
+    assert "ComfyUI" in r.json()["detail"]
 
 
 def test_queue_limit():

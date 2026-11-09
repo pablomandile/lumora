@@ -32,5 +32,7 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="LUMORA_GPU_URL" value="https://gpu.test"/>
+        <env name="LUMORA_GPU_TOKEN" value="test-token-1234567890"/>
     </php>
 </phpunit>

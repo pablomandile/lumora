@@ -10,11 +10,11 @@ Lumora (Hostinger) ──HTTPS + token──> Cloudflare ──túnel──> gat
 
 - **ComfyUI** genera las imágenes con el modelo **Z-Image Turbo**.
 - **El gateway** (`lumora_gateway/`) es un programa chico en Python que:
-  - pide el token,
-  - arma el pedido para ComfyUI,
-  - hace cola de a una imagen,
-  - avisa si la placa está disponible,
-  - y libera la memoria de la placa cuando no se usa, para que escribelo la tenga libre.
+    - pide el token,
+    - arma el pedido para ComfyUI,
+    - hace cola de a una imagen,
+    - avisa si la placa está disponible,
+    - y libera la memoria de la placa cuando no se usa, para que escribelo la tenga libre.
 - **cloudflared** es el túnel: deja entrar desde internet solo a `lumora-gpu.bambudev.com.ar`,
   sin abrir puertos en el router.
 
@@ -25,11 +25,11 @@ sigue instalado para escribelo, y el gateway le pide que suelte la placa cuando 
 
 ## 0. Requisitos
 
-| | |
-|---|---|
-| Windows 10/11 | con los drivers de NVIDIA actualizados (GeForce Experience o nvidia.com) |
-| Placa | 12 GB de VRAM. Para los archivos int8 tiene que ser RTX serie 30, 40 o 50 |
-| Disco | ~20 GB libres (ComfyUI + modelos) |
+|                         |                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| Windows 10/11           | con los drivers de NVIDIA actualizados (GeForce Experience o nvidia.com)             |
+| Placa                   | 12 GB de VRAM. Para los archivos int8 tiene que ser RTX serie 30, 40 o 50            |
+| Disco                   | ~20 GB libres (ComfyUI + modelos)                                                    |
 | Python 3.11 o más nuevo | https://www.python.org/downloads/ — al instalar, marcar **"Add python.exe to PATH"** |
 
 Para saber qué placa tenés: `nvidia-smi` en una terminal.
@@ -68,11 +68,11 @@ Descargá estos 3 archivos y ponelos en las carpetas indicadas, dentro de la car
 (Desktop: `%LOCALAPPDATA%\Comfy-Desktop\ComfyUI-Shared\models\`; portable:
 `C:\ComfyUI_windows_portable\ComfyUI\models\`):
 
-| Archivo | Carpeta | Tamaño |
-|---|---|---|
+| Archivo                                                                                                                                                                   | Carpeta            | Tamaño |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------ |
 | [z_image_turbo_int8_convrot.safetensors](https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/diffusion_models/z_image_turbo_int8_convrot.safetensors) | `diffusion_models` | 6.2 GB |
-| [qwen_3_4b_fp8_mixed.safetensors](https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b_fp8_mixed.safetensors) | `text_encoders` | 5.6 GB |
-| [ae.safetensors](https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors) | `vae` | 0.3 GB |
+| [qwen_3_4b_fp8_mixed.safetensors](https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b_fp8_mixed.safetensors)                  | `text_encoders`    | 5.6 GB |
+| [ae.safetensors](https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/vae/ae.safetensors)                                                              | `vae`              | 0.3 GB |
 
 > **Si la generación falla con un error de int8** (por ejemplo, porque la placa es más vieja que la
 > serie 30), bajá en su lugar
@@ -95,9 +95,9 @@ Descargá estos 3 archivos y ponelos en las carpetas indicadas, dentro de la car
    También podés clonar el repo y usar solo esta carpeta.
 2. Doble clic en **`instalar.bat`**. Crea el entorno de Python y un archivo `.env`.
 3. Generá el token:
-   ```
-   python -c "import secrets; print(secrets.token_urlsafe(32))"
-   ```
+    ```
+    python -c "import secrets; print(secrets.token_urlsafe(32))"
+    ```
 4. Abrí `.env` y pegalo en `LUMORA_GPU_TOKEN=`. **El mismo valor** va en el `.env` de Lumora
    (`LUMORA_GPU_TOKEN`). Revisá también que `COMFY_OUTPUT_DIR` apunte a la carpeta `output` de
    tu ComfyUI.
@@ -161,9 +161,9 @@ cambia quién responde el DNS.
    plan **Free**.
 3. Cloudflare importa los registros solo. **Comparalos uno por uno con tu lista** y agregá los que
    falten.
-   - En los registros que apuntan a Hostinger (A, CNAME de las webs), dejá la nube en **gris
-     ("DNS only")**, para que Hostinger siga manejando SSL y caché como hasta ahora.
-   - Los MX y TXT del mail tienen que estar idénticos.
+    - En los registros que apuntan a Hostinger (A, CNAME de las webs), dejá la nube en **gris
+      ("DNS only")**, para que Hostinger siga manejando SSL y caché como hasta ahora.
+    - Los MX y TXT del mail tienen que estar idénticos.
 4. Cloudflare te muestra **2 nameservers** (algo como `xxx.ns.cloudflare.com`).
 5. En **https://nic.ar** → Mis dominios → bambudev.com.ar → **Delegaciones**, reemplazá los
    nameservers de Hostinger por los 2 de Cloudflare.
@@ -182,8 +182,8 @@ cambia quién responde el DNS.
    terminal **como administrador**, pegá el comando del paso anterior. Queda instalado como servicio
    de Windows y arranca solo.
 4. En la pestaña **Public Hostnames** del túnel agregá:
-   - `lumora-gpu` . `bambudev.com.ar` → Service **HTTP** → `127.0.0.1:8766`
-   - (opcional) `escribelo-gpu` . `bambudev.com.ar` → **HTTP** → `127.0.0.1:8765`
+    - `lumora-gpu` . `bambudev.com.ar` → Service **HTTP** → `127.0.0.1:8766`
+    - (opcional) `escribelo-gpu` . `bambudev.com.ar` → **HTTP** → `127.0.0.1:8765`
 
 **Método B — por línea de comandos** (si el panel te pide una tarjeta o preferís archivos):
 
@@ -234,14 +234,14 @@ Las dos apps usan la misma placa de 12 GB:
 
 ### API (todas las rutas piden `Authorization: Bearer <token>`)
 
-| Método | Ruta | Para qué |
-|---|---|---|
-| GET | `/health` | estado de ComfyUI, placa, VRAM, cola y Ollama |
-| GET | `/models` | modelos disponibles y sus límites |
-| POST | `/generate` | `{prompt, width, height, seed?, steps?, model?}` → 202 con `id` |
-| GET | `/jobs/{id}` | `status` (queued/running/done/failed), `position`, `progress` (estimado), `error` |
-| GET | `/jobs/{id}/image` | el PNG (header `X-Seed`) |
-| DELETE | `/jobs/{id}` | borra la imagen de la PC, cuando Lumora ya la guardó |
+| Método | Ruta               | Para qué                                                                                                                                              |
+| ------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/health`          | estado de ComfyUI, placa, VRAM, cola y Ollama                                                                                                         |
+| GET    | `/models`          | modelos disponibles y sus límites                                                                                                                     |
+| POST   | `/generate`        | `{prompt, width, height, seed?, steps?, model?}` → 202 con `id`. 422 si el pedido es inválido, 429 si la cola está llena, 503 si ComfyUI está cerrado |
+| GET    | `/jobs/{id}`       | `status` (queued/running/done/failed), `position`, `progress` (estimado), `error`                                                                     |
+| GET    | `/jobs/{id}/image` | el PNG (header `X-Seed`)                                                                                                                              |
+| DELETE | `/jobs/{id}`       | borra la imagen de la PC, cuando Lumora ya la guardó                                                                                                  |
 
 - `width` y `height` van de 256 a 2048 y tienen que ser múltiplos de 16.
 - Z-Image Turbo usa por defecto 9 pasos, cfg 1, sampler `euler`, scheduler `simple` y shift 3.
@@ -264,11 +264,11 @@ Los tests usan un ComfyUI y un Ollama simulados, así que no hace falta tener la
 
 ### Problemas comunes
 
-| Síntoma | Causa probable |
-|---|---|
-| `/health` → `"comfyui":"sin respuesta"` | ComfyUI no está abierto, o no está en el puerto 8188 |
-| 401 | El token de Lumora y el del `.env` de la PC no coinciden |
-| 500 "LUMORA_GPU_TOKEN no está configurado" | Falta completar el `.env` |
-| Error "int8" o "unsupported" al generar | La placa no soporta int8: usá el archivo bf16 (ver sección 1) |
-| `CUDA out of memory` | escribelo está usando mucha VRAM. Bajá el tamaño de la imagen o esperá |
-| 502/530 desde afuera, pero local anda | cloudflared caído: revisá el servicio, o el estado del túnel en el panel de Cloudflare |
+| Síntoma                                    | Causa probable                                                                         |
+| ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `/health` → `"comfyui":"sin respuesta"`    | ComfyUI no está abierto, o no está en el puerto 8188                                   |
+| 401                                        | El token de Lumora y el del `.env` de la PC no coinciden                               |
+| 500 "LUMORA_GPU_TOKEN no está configurado" | Falta completar el `.env`                                                              |
+| Error "int8" o "unsupported" al generar    | La placa no soporta int8: usá el archivo bf16 (ver sección 1)                          |
+| `CUDA out of memory`                       | escribelo está usando mucha VRAM. Bajá el tamaño de la imagen o esperá                 |
+| 502/530 desde afuera, pero local anda      | cloudflared caído: revisá el servicio, o el estado del túnel en el panel de Cloudflare |

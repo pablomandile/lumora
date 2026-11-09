@@ -40,7 +40,9 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Más que el timeout de GenerateImage (360 s): si no, otro worker toma
+            // el mismo trabajo mientras el primero sigue esperando a la placa.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 420),
             'after_commit' => false,
         ],
 

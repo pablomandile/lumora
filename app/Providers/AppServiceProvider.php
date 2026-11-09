@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\ImageEngine\GatewayEngine;
+use App\Services\ImageEngine\ImageEngine;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +17,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Sin singleton: si el admin cambia la URL o el token, el próximo uso ya los toma.
+        $this->app->bind(ImageEngine::class, fn () => GatewayEngine::fromSettings());
     }
 
     /**

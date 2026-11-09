@@ -17,6 +17,7 @@ Correr con:
     uvicorn lumora_gateway.app:app --host 127.0.0.1 --port 8766 --timeout-keep-alive 120
 """
 
+import asyncio
 import contextlib
 import hmac
 import logging
@@ -103,17 +104,22 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "models": list(MODELS),
             "models_in_vram": manager.models_loaded,
         }
-        try:
-            info["gpu"] = await manager.comfy.vram()
-            info["comfyui"] = "ok"
-        except Exception as exc:  # noqa: BLE001
+        # En paralelo y con poco margen para Ollama: en Windows, una conexión
+        # rechazada (Ollama apagado) tarda ~2 s en fallar.
+        gpu, ollama = await asyncio.gather(
+            manager.comfy.vram(),
+            manager.ollama.loaded_models(timeout=0.5),
+            return_exceptions=True,
+        )
+        if isinstance(gpu, BaseException):
             info["status"] = "degraded"
-            info["comfyui"] = f"sin respuesta: {exc.__class__.__name__}"
+            info["comfyui"] = f"sin respuesta: {gpu.__class__.__name__}"
             info["gpu"] = None
-        try:
-            info["ollama_models"] = await manager.ollama.loaded_models()
-        except Exception:  # noqa: BLE001 — Ollama es opcional para Lumora
-            info["ollama_models"] = None
+        else:
+            info["gpu"] = gpu
+            info["comfyui"] = "ok"
+        # Ollama es opcional para Lumora.
+        info["ollama_models"] = None if isinstance(ollama, BaseException) else ollama
         return info
 
     @app.get("/models", dependencies=[Depends(auth)])
@@ -133,6 +139,12 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     @app.post("/generate", status_code=202, dependencies=[Depends(auth)])
     async def generate(body: GenerateBody, manager: Manager):
+        # Con ComfyUI cerrado se responde 503: Lumora lo toma como "placa no
+        # disponible" y reintenta más tarde, en vez de dar la imagen por fallida.
+        try:
+            await manager.comfy.system_stats()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(503, "ComfyUI no está abierto en la PC.") from exc
         try:
             job = manager.submit(GenerationRequest(**body.model_dump()))
         except InvalidRequest as exc:
