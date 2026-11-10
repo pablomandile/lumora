@@ -2,8 +2,12 @@
 
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Settings\TamanioTextoController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
+
+// Sin auth: también lo puede cambiar quien todavía no inició sesión.
+Route::put('tamanio-texto', [TamanioTextoController::class, 'update'])->name('tamanio-texto.update');
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', '/settings/profile');

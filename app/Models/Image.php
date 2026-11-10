@@ -32,6 +32,9 @@ class Image extends Model
 {
     use HasUlids, SoftDeletes;
 
+    /** Días que una imagen borrada queda en la papelera (lo promete la política). */
+    public const TRASH_DAYS = 30;
+
     protected function casts(): array
     {
         return [

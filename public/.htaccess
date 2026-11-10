@@ -23,3 +23,19 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# PWA: tipo correcto para el manifest.
+<IfModule mod_mime.c>
+    AddType application/manifest+json .webmanifest
+    AddType text/javascript .js
+</IfModule>
+
+# El service worker y el manifest no se pueden cachear: son por donde el
+# navegador se entera de que hay una versión nueva (el CDN de Hostinger los
+# guardaba 7 días).
+<IfModule mod_headers.c>
+    <FilesMatch "^(sw\.js|manifest\.webmanifest)$">
+        Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+        Header unset Expires
+    </FilesMatch>
+</IfModule>

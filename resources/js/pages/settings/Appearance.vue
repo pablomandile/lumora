@@ -2,6 +2,7 @@
 import { Head } from '@inertiajs/vue3';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import Heading from '@/components/Heading.vue';
+import SelectorTamanioTexto from '@/components/SelectorTamanioTexto.vue';
 import { edit } from '@/routes/appearance';
 
 defineOptions({
@@ -24,8 +25,17 @@ defineOptions({
     <div class="space-y-6">
         <Heading
             variant="small"
-            title="Configuración de apariencia"
-            description="Actualizá la apariencia de tu cuenta"
+            title="Tamaño de la letra"
+            description="Se guarda en tu cuenta y te sigue a otros dispositivos"
+        />
+        <SelectorTamanioTexto />
+    </div>
+
+    <div class="space-y-6">
+        <Heading
+            variant="small"
+            title="Tema"
+            description="Claro, oscuro o según el sistema"
         />
         <AppearanceTabs />
     </div>

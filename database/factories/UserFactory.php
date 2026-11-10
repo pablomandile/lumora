@@ -38,7 +38,17 @@ class UserFactory extends Factory
             'role' => UserRole::User,
             'approval_status' => ApprovalStatus::Approved,
             'approved_at' => now(),
+            'terminos_version' => config('legales.version'),
+            'terminos_aceptados_en' => now(),
         ];
+    }
+
+    public function sinAceptarTerminos(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'terminos_version' => null,
+            'terminos_aceptados_en' => null,
+        ]);
     }
 
     public function admin(): static

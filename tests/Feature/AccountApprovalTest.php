@@ -25,6 +25,7 @@ class AccountApprovalTest extends TestCase
             'email' => 'nueva@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'terminos' => '1',
         ]);
 
         $user = User::where('email', 'nueva@example.com')->firstOrFail();
@@ -42,6 +43,7 @@ class AccountApprovalTest extends TestCase
             'email' => 'jefe@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'terminos' => '1',
         ]);
 
         $user = User::where('email', 'jefe@example.com')->firstOrFail();

@@ -89,6 +89,20 @@
     }
 }
 
+/* Tamaño de letra elegido en Apariencia (lo escribe el servidor en <html>). */
+:root {
+    font-size: 100%;
+}
+html[data-texto='pequeno'] {
+    font-size: 87.5%;
+}
+html[data-texto='normal'] {
+    font-size: 100%;
+}
+html[data-texto='grande'] {
+    font-size: 112.5%;
+}
+
 :root {
     --background: hsl(0 0% 100%);
     --foreground: hsl(0 0% 3.9%);

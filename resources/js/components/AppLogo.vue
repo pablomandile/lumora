@@ -6,10 +6,9 @@ const name = usePage().props.name;
 </script>
 
 <template>
-    <div
-        class="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground"
-    >
-        <AppLogoIcon class="size-5 fill-current text-white dark:text-black" />
+    <!-- En un div: el botón del menú achica los svg que son hijos directos. -->
+    <div class="flex size-8 shrink-0">
+        <AppLogoIcon class="size-8" />
     </div>
     <div class="ml-1 grid flex-1 text-left text-sm">
         <span class="mb-0.5 truncate leading-tight font-semibold">{{

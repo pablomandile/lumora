@@ -45,10 +45,18 @@ Artisan::command('gpu:probe', function (GpuMonitor $monitor) {
 })->purpose('Consulta el estado de la placa y lo guarda para el indicador');
 
 Artisan::command('images:prune {--dry-run : Solo muestra cuántas se borrarían}', function () {
+    // Las que borró el usuario se eliminan del todo al vencer la papelera,
+    // haya o no retención configurada.
+    $trash = Image::onlyTrashed()->where('deleted_at', '<', now()->subDays(Image::TRASH_DAYS));
+
+    if (! $this->option('dry-run')) {
+        $trash->each(fn (Image $i) => $i->forceDelete());
+    }
+
     $days = AppSetting::retentionDays();
 
     if ($days <= 0) {
-        $this->info('La retención está desactivada: no se borra nada.');
+        $this->info('La retención está desactivada: solo se vació la papelera.');
 
         return 0;
     }
@@ -70,9 +78,6 @@ Artisan::command('images:prune {--dry-run : Solo muestra cuántas se borrarían}
             $deleted++;
         }
     });
-
-    // Las imágenes borradas por el usuario (soft delete) se eliminan del todo a los 30 días.
-    Image::onlyTrashed()->where('deleted_at', '<', now()->subDays(30))->each(fn (Image $i) => $i->forceDelete());
 
     $this->info("Se borraron {$deleted} imágenes de más de {$days} días.");
 

@@ -26,6 +26,9 @@ class CreateNewUser implements CreatesNewUsers
         Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
+            'terminos' => ['accepted'],
+        ], [
+            'terminos.accepted' => 'Para crear la cuenta tenés que aceptar los términos y la política de privacidad.',
         ])->validate();
 
         $user = User::create([
@@ -33,6 +36,7 @@ class CreateNewUser implements CreatesNewUsers
             'email' => $input['email'],
             'password' => $input['password'],
         ]);
+        $user->aceptarTerminos();
 
         // El email configurado como admin entra directo, sin esperar aprobación.
         if (strcasecmp($user->email, (string) config('lumora.admin_email')) === 0) {

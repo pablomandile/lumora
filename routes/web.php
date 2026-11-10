@@ -5,12 +5,25 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\GpuStatusController;
 use App\Http\Controllers\ImageController;
+use App\Http\Controllers\Legales\LegalesController;
+use App\Http\Controllers\Settings\DataExportController;
 use App\Http\Controllers\StudioController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::inertia('/', 'Welcome')->name('home');
+
+// Textos legales: se leen con sesión y sin ella.
+Route::get('terminos', [LegalesController::class, 'terminos'])->name('terminos');
+Route::get('privacidad', [LegalesController::class, 'privacidad'])->name('privacidad');
+
+Route::middleware('auth')->group(function () {
+    Route::get('terminos/aceptar', [LegalesController::class, 'aceptar'])->name('terminos.aceptar');
+    Route::post('terminos/aceptar', [LegalesController::class, 'guardarAceptacion'])->name('terminos.aceptar.store');
+    // Derecho de acceso: no depende de estar aprobado ni de aceptar los términos.
+    Route::get('settings/mis-datos', DataExportController::class)->name('exportacion.datos');
+});
 
 // Pantalla para cuentas que el admin todavía no aprobó.
 Route::middleware(['auth', 'verified'])->get('cuenta/pendiente', function (Request $request) {

@@ -12,9 +12,11 @@ void createInertiaApp({
     layout: (name) => {
         switch (true) {
             case name === 'Welcome':
+            case name === 'Legal':
                 return null;
             case name.startsWith('auth/'):
             case name.startsWith('account/'):
+            case name.startsWith('terminos/'):
                 return AuthLayout;
             case name.startsWith('settings/'):
                 return [AppLayout, SettingsLayout];
@@ -41,3 +43,10 @@ initializeTheme();
 
 // This will listen for flash toast data from the server...
 initializeFlashToast();
+
+// Service worker de la PWA (solo en producción: en dev interfiere con Vite).
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js?v=1').catch(() => {});
+    });
+}

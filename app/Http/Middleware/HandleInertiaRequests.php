@@ -2,7 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\TamanioTexto;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -43,6 +45,8 @@ class HandleInertiaRequests extends Middleware
                 'is_admin' => (bool) $request->user()?->isAdmin(),
                 'is_approved' => (bool) $request->user()?->isApproved(),
             ],
+            'tamanioTexto' => fn () => View::shared('tamanioTexto', TamanioTexto::porDefecto())->value,
+            'tamaniosTexto' => fn () => TamanioTexto::opciones(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

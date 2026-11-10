@@ -1,0 +1,41 @@
+{
+    "name": "Lumora",
+    "short_name": "Lumora",
+    "description": "Imágenes con IA a partir de una descripción.",
+    "id": "/estudio",
+    "start_url": "/estudio",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#0a0a0a",
+    "theme_color": "#0a0a0a",
+    "lang": "es-AR",
+    "categories": ["photo", "graphics", "productivity"],
+    "icons": [
+        {
+            "src": "/icons/icon-192.png?v=1",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon-512.png?v=1",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon-maskable-512.png?v=1",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Galería",
+            "url": "/galeria",
+            "icons": [{ "src": "/icons/icon-192.png?v=1", "sizes": "192x192" }]
+        }
+    ]
+}

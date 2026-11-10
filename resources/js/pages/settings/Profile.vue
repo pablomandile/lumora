@@ -4,6 +4,7 @@ import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import DeleteUser from '@/components/DeleteUser.vue';
+import { datos as misDatos } from '@/routes/exportacion';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -99,6 +100,17 @@ const user = computed(() => page.props.auth.user);
                 >
             </div>
         </Form>
+    </div>
+
+    <div class="space-y-4" data-test="export-data">
+        <Heading
+            variant="small"
+            title="Tus datos"
+            description="Tu cuenta y todos tus pedidos, en un archivo JSON. Cada imagen trae su enlace para bajar el original."
+        />
+        <Button variant="outline" as-child>
+            <a :href="misDatos().url">Descargar mis datos</a>
+        </Button>
     </div>
 
     <DeleteUser />

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { Images, SlidersHorizontal, Sparkles, Users } from '@lucide/vue';
-import { computed } from 'vue';
+import { computed, onUnmounted } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
+import InstallAppButton from '@/components/InstallAppButton.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -13,6 +14,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { dashboard, gallery } from '@/routes';
 import { index as adminSettings } from '@/routes/admin/settings';
@@ -20,6 +22,23 @@ import { index as adminUsers } from '@/routes/admin/users';
 import type { NavItem } from '@/types';
 
 const page = usePage();
+const { isMobile, setOpenMobile } = useSidebar();
+
+// En el celular el menú es un sheet que la navegación de Inertia no desmonta:
+// se cierra al cambiar de pantalla. Solo si cambió la URL, porque el estudio
+// recarga sus datos cada 3 s mientras genera y eso también es un "navigate".
+let lastPath = window.location.pathname;
+onUnmounted(
+    router.on('navigate', () => {
+        const path = window.location.pathname;
+
+        if (isMobile.value && path !== lastPath) {
+            setOpenMobile(false);
+        }
+
+        lastPath = path;
+    }),
+);
 
 const mainNavItems = computed<NavItem[]>(() => [
     { title: 'Estudio', href: dashboard(), icon: Sparkles },
@@ -56,6 +75,7 @@ const mainNavItems = computed<NavItem[]>(() => [
         </SidebarContent>
 
         <SidebarFooter>
+            <InstallAppButton />
             <NavUser />
         </SidebarFooter>
     </Sidebar>

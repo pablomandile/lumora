@@ -36,3 +36,21 @@ declare module 'vue' {
         $headManager: ReturnType<typeof createHeadManager>;
     }
 }
+
+type BeforeInstallPromptEvent = Event & {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+};
+
+declare global {
+    interface Window {
+        __pwaInstall?: {
+            prompt: BeforeInstallPromptEvent | null;
+            installed: boolean;
+        };
+    }
+
+    interface Navigator {
+        standalone?: boolean;
+    }
+}

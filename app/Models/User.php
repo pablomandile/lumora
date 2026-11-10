@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\TamanioTexto;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -33,6 +36,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property ApprovalStatus $approval_status
  * @property Carbon|null $approved_at
  * @property int|null $daily_quota
+ * @property TamanioTexto $tamanio_texto
+ * @property string|null $terminos_version
+ * @property Carbon|null $terminos_aceptados_en
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -42,6 +48,11 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    // Sin esto, un usuario recién creado tiene el tamaño en null hasta refrescarlo.
+    protected $attributes = [
+        'tamanio_texto' => TamanioTexto::PORDEFECTO,
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -58,6 +69,8 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'approval_status' => ApprovalStatus::class,
             'approved_at' => 'datetime',
             'daily_quota' => 'integer',
+            'tamanio_texto' => TamanioTexto::class,
+            'terminos_aceptados_en' => 'datetime',
         ];
     }
 
@@ -121,5 +134,29 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         }
 
         return $this->daily_quota ?? AppSetting::defaultDailyQuota();
+    }
+
+    public function aceptoTerminosVigentes(): bool
+    {
+        return $this->terminos_version !== null
+            && $this->terminos_version === config('legales.version');
+    }
+
+    public function aceptarTerminos(): void
+    {
+        $this->forceFill([
+            'terminos_version' => config('legales.version'),
+            'terminos_aceptados_en' => now(),
+        ])->save();
+    }
+
+    protected static function booted(): void
+    {
+        // Eliminar la cuenta borra de verdad: las filas caen en cascada, pero
+        // los archivos y las sesiones abiertas hay que borrarlos a mano.
+        static::deleting(function (User $user): void {
+            Storage::disk('local')->deleteDirectory("images/{$user->id}");
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        });
     }
 }
