@@ -1,15 +1,8 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import {
-    BookOpen,
-    FolderGit2,
-    LayoutGrid,
-    SlidersHorizontal,
-    Users,
-} from '@lucide/vue';
+import { Images, SlidersHorizontal, Sparkles, Users } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
-import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -21,7 +14,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+import { dashboard, gallery } from '@/routes';
 import { index as adminSettings } from '@/routes/admin/settings';
 import { index as adminUsers } from '@/routes/admin/users';
 import type { NavItem } from '@/types';
@@ -29,11 +22,8 @@ import type { NavItem } from '@/types';
 const page = usePage();
 
 const mainNavItems = computed<NavItem[]>(() => [
-    {
-        title: 'Panel',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
+    { title: 'Estudio', href: dashboard(), icon: Sparkles },
+    { title: 'Galería', href: gallery(), icon: Images },
     ...(page.props.auth.is_admin
         ? [
               { title: 'Usuarios', href: adminUsers(), icon: Users },
@@ -45,19 +35,6 @@ const mainNavItems = computed<NavItem[]>(() => [
           ]
         : []),
 ]);
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repositorio',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentación',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
 </script>
 
 <template>
@@ -79,7 +56,6 @@ const footerNavItems: NavItem[] = [
         </SidebarContent>
 
         <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
             <NavUser />
         </SidebarFooter>
     </Sidebar>

@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\GpuStatusController;
+use App\Http\Controllers\ImageController;
+use App\Http\Controllers\StudioController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -21,7 +24,22 @@ Route::middleware(['auth', 'verified'])->get('cuenta/pendiente', function (Reque
 })->name('account.pending');
 
 Route::middleware(['auth', 'verified', 'approved'])->group(function () {
-    Route::inertia('dashboard', 'Dashboard')->name('dashboard');
+    // El "dashboard" es el estudio: el nombre de ruta queda por Fortify y los mails.
+    Route::get('estudio', [StudioController::class, 'index'])->name('dashboard');
+    Route::post('estudio', [StudioController::class, 'store'])->middleware('throttle:generate')->name('generations.store');
+    Route::delete('generaciones/{generation}', [StudioController::class, 'destroy'])->name('generations.destroy');
+
+    Route::get('galeria', [GalleryController::class, 'index'])->name('gallery');
+
+    Route::get('imagenes/{image}', [ImageController::class, 'show'])->name('images.show');
+    Route::get('imagenes/{image}/miniatura', [ImageController::class, 'thumb'])->name('images.thumb');
+    Route::get('imagenes/{image}/descargar/{format}', [ImageController::class, 'download'])
+        ->whereIn('format', ['png', 'jpg', 'webp'])
+        ->middleware('throttle:60,1')
+        ->name('images.download');
+    Route::patch('imagenes/{image}/favorita', [ImageController::class, 'favorite'])->name('images.favorite');
+    Route::delete('imagenes/{image}', [ImageController::class, 'destroy'])->name('images.destroy');
+
     Route::get('placa/estado', GpuStatusController::class)->name('gpu.status');
 });
 

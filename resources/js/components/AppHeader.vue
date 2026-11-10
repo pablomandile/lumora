@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
-    BookOpen,
-    Folder,
-    LayoutGrid,
+    Images,
     Menu,
     Search,
     SlidersHorizontal,
+    Sparkles,
     Users,
 } from '@lucide/vue';
 import { computed } from 'vue';
@@ -44,7 +43,7 @@ import UserMenuContent from '@/components/UserMenuContent.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { getInitials } from '@/composables/useInitials';
 import { toUrl } from '@/lib/utils';
-import { dashboard } from '@/routes';
+import { dashboard, gallery } from '@/routes';
 import { index as adminSettings } from '@/routes/admin/settings';
 import { index as adminUsers } from '@/routes/admin/users';
 import type { BreadcrumbItem, NavItem } from '@/types';
@@ -65,11 +64,8 @@ const activeItemStyles =
     'text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100';
 
 const mainNavItems = computed<NavItem[]>(() => [
-    {
-        title: 'Panel',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
+    { title: 'Estudio', href: dashboard(), icon: Sparkles },
+    { title: 'Galería', href: gallery(), icon: Images },
     ...(auth.value.is_admin
         ? [
               { title: 'Usuarios', href: adminUsers(), icon: Users },
@@ -82,18 +78,8 @@ const mainNavItems = computed<NavItem[]>(() => [
         : []),
 ]);
 
-const rightNavItems: NavItem[] = [
-    {
-        title: 'Repositorio',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentación',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
+// Sin enlaces externos por ahora.
+const rightNavItems: NavItem[] = [];
 </script>
 
 <template>
