@@ -91,7 +91,21 @@ self.addEventListener('fetch', (event) => {
 
     if (request.mode === 'navigate') {
         event.respondWith(
-            fetch(request).catch(
+            fetch(request)
+                .then((response) => {
+                    // Red de seguridad: si el navegador tenía guardado el JSON de
+                    // Inertia bajo esta URL (CDN sin Vary), se pide el HTML.
+                    if (!response.headers.get('x-inertia')) {
+                        return response;
+                    }
+
+                    return fetch(request.url, { cache: 'reload', headers: { Accept: 'text/html' } }).then((again) =>
+                        // Una respuesta redirigida (sesión vencida) no se le puede
+                        // entregar a una navegación: se le pasa el redirect.
+                        again.redirected ? Response.redirect(again.url, 302) : again,
+                    );
+                })
+                .catch(
                 () =>
                     new Response(OFFLINE_HTML, {
                         headers: { 'Content-Type': 'text/html; charset=utf-8' },

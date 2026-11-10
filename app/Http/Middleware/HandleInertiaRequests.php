@@ -3,9 +3,12 @@
 namespace App\Http\Middleware;
 
 use App\Enums\TamanioTexto;
+use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
 use Inertia\Middleware;
+use Inertia\Support\Header;
+use Symfony\Component\HttpFoundation\Response;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -17,6 +20,26 @@ class HandleInertiaRequests extends Middleware
      * @var string
      */
     protected $rootView = 'app';
+
+    /**
+     * El CDN de Hostinger borra el `Vary: X-Inertia` al comprimir con brotli:
+     * el navegador guarda el JSON de un XHR bajo la misma URL que el HTML y, al
+     * restaurar una pestaña descartada, lo muestra crudo en pantalla.
+     */
+    public function handle(Request $request, Closure $next): Response
+    {
+        $response = parent::handle($request, $next);
+
+        $response->headers->set('Vary', Header::INERTIA.', Accept-Encoding');
+
+        // no-store (no-cache permite guardar) y solo en el XHR: en el HTML
+        // desactivaría el back/forward cache.
+        if ($request->header(Header::INERTIA)) {
+            $response->headers->set('Cache-Control', 'no-store, private');
+        }
+
+        return $response;
+    }
 
     /**
      * Determines the current asset version.
