@@ -78,7 +78,7 @@ const pendingText = computed(() => {
             class="flex size-full flex-col items-center justify-center gap-3 p-4 text-center"
         >
             <div
-                class="absolute inset-0 animate-pulse bg-gradient-to-br from-violet-500/10 via-transparent to-sky-500/10"
+                class="absolute inset-0 animate-pulse bg-gradient-to-br from-orange-500/10 via-transparent to-pink-500/10"
             />
             <div
                 class="relative size-8 rounded-full border-2 border-muted-foreground/20 border-t-primary"

@@ -67,7 +67,7 @@ const features = [
                 >
                     Convertí tus ideas en
                     <span
-                        class="bg-gradient-to-r from-violet-500 to-sky-500 bg-clip-text text-transparent"
+                        class="bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 bg-clip-text text-transparent"
                         >imágenes</span
                     >
                 </h1>
@@ -115,7 +115,7 @@ const features = [
                 >
                     <component
                         :is="feature.icon"
-                        class="mb-3 size-5 text-violet-500"
+                        class="mb-3 size-5 text-primary"
                     />
                     <h2 class="mb-1 text-sm font-medium">
                         {{ feature.title }}

@@ -145,7 +145,7 @@ onMounted(() => {
                 class="mx-auto flex max-w-xl flex-col items-center gap-5 py-10 text-center sm:py-16"
             >
                 <div
-                    class="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-sky-500 text-white shadow-lg"
+                    class="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 text-white shadow-lg"
                 >
                     <Sparkles class="size-7" />
                 </div>

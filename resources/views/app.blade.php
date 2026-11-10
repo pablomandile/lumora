@@ -5,7 +5,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-        <meta name="theme-color" content="#0a0a0a">
+        <meta name="theme-color" content="#0d0709">
         <meta name="description" content="Lumora: imágenes con IA a partir de una descripción.">
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,18 +49,18 @@
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
         <style>
             html {
-                background-color: oklch(1 0 0);
+                background-color: hsl(30 33% 99.5%);
             }
 
             html.dark {
-                background-color: oklch(0.145 0 0);
+                background-color: #0d0709;
             }
         </style>
 
         <link rel="manifest" href="/manifest.webmanifest">
-        <link rel="icon" href="/favicon.ico?v=1" sizes="any">
-        <link rel="icon" href="/favicon.svg?v=1" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=1">
+        <link rel="icon" href="/favicon.ico?v=2" sizes="any">
+        <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
 
         @fonts
 

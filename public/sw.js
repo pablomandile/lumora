@@ -10,16 +10,16 @@
  *
  * Al cambiar íconos o este archivo, subí CACHE (activate borra las demás).
  */
-const CACHE = 'lumora-v1';
+const CACHE = 'lumora-v2';
 
 const OFFLINE_HTML = `<!doctype html><html lang="es"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sin conexión · Lumora</title>
-<body style="margin:0;min-height:100dvh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:24px">
-<div><img src="/icons/icon-192.png?v=1" width="72" height="72" alt="" style="border-radius:16px">
+<body style="margin:0;min-height:100dvh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#0d0709;color:#eee;text-align:center;padding:24px">
+<div><img src="/icons/icon-192.png?v=2" width="72" height="72" alt="" style="border-radius:16px">
 <h1 style="font-size:20px;margin:16px 0 8px">Sin conexión</h1>
 <p style="color:#aaa;margin:0 0 20px">Lumora necesita internet para generar y mostrar tus imágenes.</p>
-<button onclick="location.reload()" style="font:inherit;padding:10px 18px;border-radius:999px;border:0;background:#fff;color:#000">Reintentar</button></div>`;
+<button onclick="location.reload()" style="font:inherit;padding:10px 18px;border-radius:999px;border:0;background:#ff7a45;color:#1a0a0e">Reintentar</button></div>`;
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -28,7 +28,7 @@ self.addEventListener('install', (event) => {
             .then((cache) =>
                 cache.addAll([
                     '/manifest.webmanifest',
-                    '/icons/icon-192.png?v=1',
+                    '/icons/icon-192.png?v=2',
                 ]),
             )
             .catch(() => {}),
