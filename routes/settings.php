@@ -3,7 +3,7 @@
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Settings\TamanioTextoController;
-use Illuminate\Auth\Middleware\RequirePassword;
+use App\Http\Middleware\RequirePasswordIfSet;
 use Illuminate\Support\Facades\Route;
 
 // Sin auth: también lo puede cambiar quien todavía no inició sesión.
@@ -20,7 +20,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])
-        ->middleware(RequirePassword::class)
+        ->middleware(RequirePasswordIfSet::class)
         ->name('security.edit');
 
     Route::put('settings/password', [SecurityController::class, 'update'])

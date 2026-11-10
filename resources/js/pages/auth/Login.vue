@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import GoogleLoginButton from '@/components/GoogleLoginButton.vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -22,6 +23,7 @@ defineOptions({
 
 defineProps<{
     status?: string;
+    error?: string;
     canResetPassword: boolean;
 }>();
 </script>
@@ -36,7 +38,20 @@ defineProps<{
         {{ status }}
     </div>
 
-    <PasskeyVerify />
+    <div
+        v-if="error"
+        role="alert"
+        class="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-center text-sm text-red-700 dark:border-red-200/10 dark:bg-red-700/10 dark:text-red-200"
+        data-test="login-error"
+    >
+        {{ error }}
+    </div>
+
+    <!-- Juntos: el layout separa cada bloque de primer nivel -->
+    <div class="flex flex-col gap-3">
+        <GoogleLoginButton :divider="false" />
+        <PasskeyVerify />
+    </div>
 
     <Form
         v-bind="store.form()"

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\TamanioTexto;
+use App\Services\Auth\GoogleLogin;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
@@ -67,7 +68,10 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
                 'is_admin' => (bool) $request->user()?->isAdmin(),
                 'is_approved' => (bool) $request->user()?->isApproved(),
+                // Las cuentas creadas con Google no tienen contraseña.
+                'hasPassword' => filled($request->user()?->getAuthPassword()),
             ],
+            'googleLoginEnabled' => GoogleLogin::enabled(),
             'tamanioTexto' => fn () => View::shared('tamanioTexto', TamanioTexto::porDefecto())->value,
             'tamaniosTexto' => fn () => TamanioTexto::opciones(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

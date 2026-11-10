@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureUserIsApproved;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\HandleTamanioTexto;
+use App\Http\Middleware\RequirePasswordIfSet;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -22,6 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'approved' => EnsureUserIsApproved::class,
             'admin' => EnsureUserIsAdmin::class,
+            // Las cuentas creadas con Google no tienen contraseña que confirmar.
+            'password.confirm' => RequirePasswordIfSet::class,
         ]);
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'tamanio_texto']);

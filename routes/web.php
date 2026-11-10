@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\GpuStatusController;
 use App\Http\Controllers\ImageController;
@@ -13,6 +14,13 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::inertia('/', 'Welcome')->name('home');
+
+// Ingreso con Google. `guest`: con la sesión abierta, rehacer el flujo solo
+// serviría para cambiar de cuenta sin cerrar la sesión.
+Route::middleware('guest')->group(function () {
+    Route::get('auth/google/redirect', [GoogleController::class, 'redirect'])->name('google.redirect');
+    Route::get('auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
+});
 
 // Textos legales: se leen con sesión y sin ella.
 Route::get('terminos', [LegalesController::class, 'terminos'])->name('terminos');

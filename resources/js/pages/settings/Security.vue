@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -20,6 +21,10 @@ type Props = {
 
 const props = defineProps<Props>();
 
+// Las cuentas creadas con Google no tienen contraseña: crean la primera.
+const page = usePage();
+const hasPassword = computed(() => page.props.auth.hasPassword);
+
 defineOptions({
     layout: {
         breadcrumbs: [
@@ -39,9 +44,16 @@ defineOptions({
 
     <div class="space-y-6">
         <Heading
+            v-if="hasPassword"
             variant="small"
             title="Cambiar contraseña"
             description="Usá una contraseña larga y aleatoria para mantener tu cuenta segura"
+        />
+        <Heading
+            v-else
+            variant="small"
+            title="Crear una contraseña"
+            description="Entrás con Google. Si además creás una contraseña, también vas a poder entrar con tu email"
         />
 
         <Form
@@ -58,7 +70,7 @@ defineOptions({
             class="space-y-6"
             v-slot="{ errors, processing }"
         >
-            <div class="grid gap-2">
+            <div v-if="hasPassword" class="grid gap-2">
                 <Label for="current_password">Contraseña actual</Label>
                 <PasswordInput
                     id="current_password"

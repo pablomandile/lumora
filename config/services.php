@@ -32,6 +32,18 @@ return [
     | Gateway de la PC con la placa (gpu_worker/), detrás del túnel de
     | Cloudflare. La URL y el token se pueden pisar desde Ajustes del admin.
     */
+    /*
+    | Ingreso con Google. Sin client_id/secret el botón no se muestra y las
+    | rutas de /auth/google dan 404. La redirect URI tiene que ser idéntica a
+    | la cargada en Google Cloud (esquema incluido, sin barra final).
+    */
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        // `?:` y no el default de env(): una línea `GOOGLE_REDIRECT_URI=` vacía llega como ''.
+        'redirect' => env('GOOGLE_REDIRECT_URI') ?: env('APP_URL').'/auth/google/callback',
+    ],
+
     'lumora_gpu' => [
         'url' => env('LUMORA_GPU_URL'),
         'token' => env('LUMORA_GPU_TOKEN'),

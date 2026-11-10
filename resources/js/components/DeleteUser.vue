@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Form } from '@inertiajs/vue3';
-import { useTemplateRef } from 'vue';
+import { Form, usePage } from '@inertiajs/vue3';
+import { computed, useTemplateRef } from 'vue';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -19,6 +19,10 @@ import {
 import { Label } from '@/components/ui/label';
 
 const passwordInput = useTemplateRef('passwordInput');
+
+// Una cuenta creada con Google no tiene contraseña: alcanza con confirmar.
+const page = usePage();
+const hasPassword = computed(() => page.props.auth.hasPassword);
 </script>
 
 <template>
@@ -61,13 +65,16 @@ const passwordInput = useTemplateRef('passwordInput');
                             >
                             <DialogDescription>
                                 Una vez eliminada tu cuenta, todos sus datos se
-                                van a borrar de forma permanente. Ingresá tu
-                                contraseña para confirmar que querés eliminar tu
-                                cuenta definitivamente.
+                                van a borrar de forma permanente.
+                                <template v-if="hasPassword"
+                                    >Ingresá tu contraseña para confirmar que
+                                    querés eliminar tu cuenta
+                                    definitivamente.</template
+                                >
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div class="grid gap-2">
+                        <div v-if="hasPassword" class="grid gap-2">
                             <Label for="password" class="sr-only"
                                 >Contraseña</Label
                             >
