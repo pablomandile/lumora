@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  *
  * @property string $id
  * @property int $user_id
+ * @property string|null $conversation_id
  * @property string $prompt
  * @property string|null $negative_prompt
  * @property string $model
@@ -38,10 +39,11 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read User $user
+ * @property-read Conversation|null $conversation
  * @property-read Image|null $image
  */
 #[Fillable([
-    'user_id', 'prompt', 'negative_prompt', 'model', 'width', 'height', 'aspect', 'steps', 'seed',
+    'user_id', 'conversation_id', 'prompt', 'negative_prompt', 'model', 'width', 'height', 'aspect', 'steps', 'seed',
     'status', 'remote_job_id', 'progress', 'queue_position', 'error', 'run_seconds', 'started_at', 'finished_at',
 ])]
 class Generation extends Model
@@ -73,6 +75,12 @@ class Generation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<Conversation, $this> */
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(Conversation::class);
     }
 
     /** @return HasOne<Image, $this> */

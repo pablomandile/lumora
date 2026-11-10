@@ -122,6 +122,12 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $this->hasMany(Generation::class);
     }
 
+    /** @return HasMany<Conversation, $this> */
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class);
+    }
+
     /** @return HasMany<Image, $this> */
     public function images(): HasMany
     {

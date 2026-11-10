@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\GpuStatusController;
 use App\Http\Controllers\ImageController;
@@ -47,6 +48,9 @@ Route::middleware(['auth', 'verified'])->get('cuenta/pendiente', function (Reque
 Route::middleware(['auth', 'verified', 'approved'])->group(function () {
     // El "dashboard" es el estudio: el nombre de ruta queda por Fortify y los mails.
     Route::get('estudio', [StudioController::class, 'index'])->name('dashboard');
+    Route::get('estudio/{conversation}', [StudioController::class, 'show'])->name('conversations.show');
+    Route::patch('conversaciones/{conversation}', [ConversationController::class, 'update'])->name('conversations.update');
+    Route::delete('conversaciones/{conversation}', [ConversationController::class, 'destroy'])->name('conversations.destroy');
     Route::post('estudio', [StudioController::class, 'store'])->middleware('throttle:generate')->name('generations.store');
     Route::delete('generaciones/{generation}', [StudioController::class, 'destroy'])->name('generations.destroy');
 

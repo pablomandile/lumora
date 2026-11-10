@@ -25,6 +25,8 @@ const props = defineProps<{
     quota: Quota;
     isAdmin: boolean;
     maxSide: number;
+    /** null = conversación nueva: el primer pedido la crea. */
+    conversationId: string | null;
 }>();
 
 const emit = defineEmits<{ submitted: [] }>();
@@ -129,10 +131,20 @@ function submit(): void {
                 : null,
         width: data.aspect === 'custom' ? Number(data.width) : null,
         height: data.aspect === 'custom' ? Number(data.height) : null,
+        conversation_id: props.conversationId,
     })).post(store().url, {
         preserveScroll: true,
-        only: ['generations', 'quota', 'has_more', 'flash'],
-        onSuccess: () => emit('submitted'),
+        // En una conversación existente alcanza con recargar el hilo. Una nueva
+        // cambia de URL y suma una entrada al menú: va la visita completa.
+        ...(props.conversationId
+            ? { only: ['generations', 'quota', 'flash'], preserveState: true }
+            : {}),
+        onSuccess: () => {
+            // Como en un chat: el pedido pasa al hilo y la caja queda libre.
+            form.prompt = '';
+            nextTick(autosize);
+            emit('submitted');
+        },
     });
 }
 

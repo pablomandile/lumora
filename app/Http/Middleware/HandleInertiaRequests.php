@@ -72,6 +72,16 @@ class HandleInertiaRequests extends Middleware
                 'hasPassword' => filled($request->user()?->getAuthPassword()),
             ],
             'googleLoginEnabled' => GoogleLogin::enabled(),
+            // El menú de conversaciones del estudio: las últimas usadas primero.
+            'conversations' => fn () => $request->user()?->isApproved()
+                ? $request->user()->conversations()
+                    ->latest('updated_at')
+                    ->latest('id')
+                    ->limit(50)
+                    ->get(['id', 'title'])
+                    ->map(fn ($c) => ['id' => $c->id, 'title' => $c->title])
+                    ->all()
+                : [],
             'tamanioTexto' => fn () => View::shared('tamanioTexto', TamanioTexto::porDefecto())->value,
             'tamaniosTexto' => fn () => TamanioTexto::opciones(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

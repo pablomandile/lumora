@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { Head, Link, router, usePage, usePoll } from '@inertiajs/vue3';
-import { Images, Sparkles } from '@lucide/vue';
-import { computed, onMounted, ref, watch } from 'vue';
+import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
+import { Expand, PencilLine, Shuffle, Sparkles } from '@lucide/vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import ImageViewer from '@/components/images/ImageViewer.vue';
 import GenerationCard from '@/components/studio/GenerationCard.vue';
 import PromptBar from '@/components/studio/PromptBar.vue';
+import { Button } from '@/components/ui/button';
 import { requestGeneration } from '@/lib/generate';
-import { dashboard, gallery } from '@/routes';
+import { dashboard } from '@/routes';
 import { destroy as destroyGeneration } from '@/routes/generations';
 import type {
     AspectOption,
+    ConversationItem,
     GenerationItem,
     ImageItem,
     ModelOption,
@@ -24,21 +27,22 @@ defineOptions({
 });
 
 const props = defineProps<{
+    /** null = conversación nueva, todavía sin pedidos. */
+    conversation: ConversationItem | null;
     generations: GenerationItem[];
     quota: Quota;
-    has_more: boolean;
     models: ModelOption[];
     aspects: AspectOption[];
     max_side: number;
     prefill: { prompt: string; aspect: string | null; seed: number | null };
 }>();
 
-const RELOAD = ['generations', 'quota', 'has_more'];
+const RELOAD = ['generations', 'quota'];
 
 const page = usePage();
 const isAdmin = computed(() => page.props.auth.is_admin);
 const bar = ref<InstanceType<typeof PromptBar> | null>(null);
-const top = ref<HTMLElement | null>(null);
+const bottom = ref<HTMLElement | null>(null);
 const viewing = ref<string | null>(null);
 
 const images = computed<ImageItem[]>(() =>
@@ -69,36 +73,63 @@ const examples = [
     'Cartel minimalista que dice "LUMORA" con letras de neón violeta',
 ];
 
+function details(g: GenerationItem): string {
+    const parts = [g.aspect ?? `${g.width}×${g.height}`];
+
+    if (g.seed != null) {
+        parts.push(`semilla ${g.seed}`);
+    }
+
+    return parts.join(' · ');
+}
+
+/** Las verticales más angostas, para que entren en la pantalla. */
+function cardWidth(g: GenerationItem): string {
+    if (g.height > g.width) {
+        return 'max-w-[16rem] sm:max-w-xs';
+    }
+
+    return g.width > g.height ? 'max-w-lg' : 'max-w-sm';
+}
+
+function scrollToBottom(smooth = true): void {
+    nextTick(() =>
+        bottom.value?.scrollIntoView({
+            behavior: smooth ? 'smooth' : 'auto',
+            block: 'end',
+        }),
+    );
+}
+
+// Un pedido nuevo (propio o una variante) lleva al final del hilo.
+watch(
+    () => props.generations.length,
+    (now, before) => {
+        if (now > before) {
+            scrollToBottom();
+        }
+    },
+);
+
 function fill(preset: PromptPreset): void {
     bar.value?.fill(preset);
 }
 
-function onSubmitted(): void {
-    top.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function vary(image: ImageItem): void {
+function regenerate(g: {
+    prompt: string;
+    aspect: string | null;
+    width: number;
+    height: number;
+}): void {
     requestGeneration(
         {
-            prompt: image.prompt,
-            aspect: image.aspect,
-            width: image.width,
-            height: image.height,
+            prompt: g.prompt,
+            aspect: g.aspect,
+            width: g.width,
+            height: g.height,
+            conversation_id: props.conversation?.id ?? null,
         },
-        RELOAD,
-    );
-    onSubmitted();
-}
-
-function retry(generation: GenerationItem): void {
-    requestGeneration(
-        {
-            prompt: generation.prompt,
-            aspect: generation.aspect,
-            width: generation.width,
-            height: generation.height,
-        },
-        RELOAD,
+        props.conversation ? RELOAD : undefined,
     );
 }
 
@@ -110,6 +141,8 @@ function dismiss(generation: GenerationItem): void {
 }
 
 onMounted(() => {
+    scrollToBottom(false);
+
     if (props.prefill.prompt) {
         fill(props.prefill);
         // Se limpia la URL para que recargar no vuelva a cargar el prompt.
@@ -119,25 +152,99 @@ onMounted(() => {
 </script>
 
 <template>
-    <Head title="Estudio" />
+    <Head :title="conversation?.title ?? 'Nueva conversación'" />
 
     <div class="relative flex flex-1 flex-col">
-        <div ref="top" class="scroll-mt-20" />
-
         <div class="flex-1 px-3 pt-4 pb-8 sm:px-4">
             <div
                 v-if="generations.length"
-                class="columns-2 gap-3 sm:columns-3 xl:columns-4"
-                data-test="generations"
+                class="mx-auto flex w-full max-w-3xl flex-col gap-6"
+                data-test="thread"
             >
-                <GenerationCard
+                <h1
+                    v-if="conversation"
+                    class="truncate text-center text-sm font-medium text-muted-foreground"
+                >
+                    {{ conversation.title }}
+                </h1>
+
+                <div
                     v-for="generation in generations"
                     :key="generation.id"
-                    :generation="generation"
-                    @open="viewing = generation.image?.id ?? null"
-                    @retry="retry(generation)"
-                    @dismiss="dismiss(generation)"
-                />
+                    class="flex flex-col gap-3"
+                    data-test="turn"
+                >
+                    <!-- El pedido -->
+                    <div class="flex justify-end">
+                        <div
+                            class="max-w-[85%] rounded-2xl rounded-br-md bg-muted px-4 py-2.5"
+                        >
+                            <p
+                                class="text-sm break-words whitespace-pre-wrap"
+                                data-test="turn-prompt"
+                            >
+                                {{ generation.prompt }}
+                            </p>
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                {{ details(generation) }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- La respuesta -->
+                    <div class="flex items-start gap-2.5">
+                        <AppLogoIcon class="mt-1 size-7 shrink-0" />
+                        <div class="min-w-0 flex-1">
+                            <div :class="cardWidth(generation)">
+                                <GenerationCard
+                                    :generation="generation"
+                                    @open="
+                                        viewing = generation.image?.id ?? null
+                                    "
+                                    @retry="regenerate(generation)"
+                                    @dismiss="dismiss(generation)"
+                                />
+                            </div>
+                            <div
+                                v-if="generation.image"
+                                class="-mt-1 flex flex-wrap gap-1"
+                            >
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    class="text-muted-foreground"
+                                    @click="regenerate(generation)"
+                                >
+                                    <Shuffle />
+                                    Otra variante
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    class="text-muted-foreground"
+                                    @click="
+                                        fill({
+                                            prompt: generation.prompt,
+                                            aspect: generation.aspect,
+                                        })
+                                    "
+                                >
+                                    <PencilLine />
+                                    Editar prompt
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    class="text-muted-foreground"
+                                    @click="viewing = generation.image.id"
+                                >
+                                    <Expand />
+                                    Ver y descargar
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div
@@ -169,15 +276,7 @@ onMounted(() => {
                 </div>
             </div>
 
-            <div v-if="has_more" class="mt-4 flex justify-center">
-                <Link
-                    :href="gallery()"
-                    class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-                >
-                    <Images class="size-4" />
-                    Ver todas en la galería
-                </Link>
-            </div>
+            <div ref="bottom" class="scroll-mb-40" />
         </div>
 
         <div
@@ -190,7 +289,8 @@ onMounted(() => {
                 :quota="quota"
                 :is-admin="isAdmin"
                 :max-side="max_side"
-                @submitted="onSubmitted"
+                :conversation-id="conversation?.id ?? null"
+                @submitted="scrollToBottom()"
             />
         </div>
     </div>
@@ -200,6 +300,6 @@ onMounted(() => {
         :images="images"
         :reload="RELOAD"
         @reuse="fill"
-        @vary="vary"
+        @vary="regenerate"
     />
 </template>

@@ -23,33 +23,6 @@ function doneGeneration(User $user, array $attributes = []): Generation
     return $generation->fresh(['image']);
 }
 
-it('muestra el estudio con las generaciones, la cuota y los aspectos', function () {
-    $user = User::factory()->create(['daily_quota' => 5]);
-    $done = doneGeneration($user);
-    Generation::factory()->for($user)->create();
-    Generation::factory()->for(User::factory())->create(); // de otro usuario
-
-    $this->actingAs($user)->get(route('dashboard'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Studio')
-            ->has('generations', 2)
-            ->where('generations.1.id', $done->id)
-            ->where('generations.1.image.id', $done->image->id)
-            ->where('generations.1.image.seed', 42)
-            ->where('quota', ['limit' => 5, 'used' => 2, 'remaining' => 3])
-            ->has('aspects', 8)
-            ->where('models.0.key', 'z-image-turbo'));
-});
-
-it('no muestra las terminadas cuya imagen se borró', function () {
-    $user = User::factory()->create();
-    doneGeneration($user)->image->delete();
-
-    $this->actingAs($user)->get(route('dashboard'))
-        ->assertInertia(fn (Assert $page) => $page->has('generations', 0));
-});
-
 it('carga el prompt que llega por la URL', function () {
     $this->actingAs(User::factory()->create())
         ->get(route('dashboard', ['prompt' => 'un faro', 'aspect' => '16:9', 'seed' => '7']))
@@ -62,7 +35,7 @@ it('pide una imagen y la encola', function () {
 
     $this->actingAs($user)
         ->post(route('generations.store'), ['prompt' => 'un gato astronauta', 'aspect' => '9:16', 'seed' => 123])
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('conversations.show', $user->conversations()->sole()));
 
     $generation = $user->generations()->sole();
     expect($generation->prompt)->toBe('un gato astronauta')

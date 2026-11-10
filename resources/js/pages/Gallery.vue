@@ -89,6 +89,8 @@ function vary(image: ImageItem): void {
         aspect: image.aspect,
         width: image.width,
         height: image.height,
+        // La variante va a la conversación donde nació la imagen.
+        conversation_id: image.conversation_id,
     });
 }
 </script>

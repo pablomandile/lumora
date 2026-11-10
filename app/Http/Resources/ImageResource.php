@@ -31,6 +31,7 @@ class ImageResource extends JsonResource
             'bytes' => $this->bytes,
             'favorite' => $this->favorite,
             'created_at' => $this->created_at?->toIso8601String(),
+            'conversation_id' => $generation->conversation_id,
             'prompt' => $generation->prompt,
             'model' => $generation->model,
             'aspect' => $generation->aspect,

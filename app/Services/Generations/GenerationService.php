@@ -4,6 +4,7 @@ namespace App\Services\Generations;
 
 use App\Jobs\GenerateImage;
 use App\Models\AiModel;
+use App\Models\Conversation;
 use App\Models\Generation;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -11,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Crea pedidos de imagen: valida modelo y tamaño, controla la cuota diaria
- * y encola el Job.
+ * y encola el Job. Sin conversación, abre una nueva titulada con el prompt.
  */
 class GenerationService
 {
@@ -21,7 +22,7 @@ class GenerationService
      * @throws QuotaExceededException
      * @throws ValidationException
      */
-    public function create(User $user, array $data): Generation
+    public function create(User $user, array $data, ?Conversation $conversation = null): Generation
     {
         $model = $this->resolveModel($user, $data['model'] ?? null);
         [$width, $height, $aspect] = $this->resolveSize($user, $data);
@@ -35,7 +36,12 @@ class GenerationService
             ? max(1, min((int) $data['steps'], $model->maxSteps()))
             : $model->defaultSteps();
 
+        $conversation ??= $user->conversations()->create([
+            'title' => Conversation::titleFromPrompt($data['prompt']),
+        ]);
+
         $generation = $user->generations()->create([
+            'conversation_id' => $conversation->id,
             'prompt' => trim($data['prompt']),
             'negative_prompt' => filled($data['negative_prompt'] ?? null) ? trim($data['negative_prompt']) : null,
             'model' => $model->key,
@@ -45,6 +51,9 @@ class GenerationService
             'steps' => $steps,
             'seed' => $data['seed'] ?? null,
         ]);
+
+        // La última usada sube al principio del menú.
+        $conversation->touch();
 
         GenerateImage::dispatch($generation->id);
 

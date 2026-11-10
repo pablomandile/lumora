@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Images, SlidersHorizontal, Sparkles, Users } from '@lucide/vue';
+import { Images, SlidersHorizontal, SquarePen, Users } from '@lucide/vue';
 import { computed, onUnmounted } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import InstallAppButton from '@/components/InstallAppButton.vue';
+import NavConversations from '@/components/NavConversations.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -41,7 +42,8 @@ onUnmounted(
 );
 
 const mainNavItems = computed<NavItem[]>(() => [
-    { title: 'Estudio', href: dashboard(), icon: Sparkles },
+    // El estudio sin conversación es una nueva: el primer pedido la crea.
+    { title: 'Nueva conversación', href: dashboard(), icon: SquarePen },
     { title: 'Galería', href: gallery(), icon: Images },
     ...(page.props.auth.is_admin
         ? [
@@ -72,6 +74,7 @@ const mainNavItems = computed<NavItem[]>(() => [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
+            <NavConversations />
         </SidebarContent>
 
         <SidebarFooter>

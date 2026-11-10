@@ -7,11 +7,13 @@ export type GenerationRequest = {
     seed?: number | null;
     width?: number;
     height?: number;
+    /** Sin conversación, el servidor abre una nueva. */
+    conversation_id?: string | null;
 };
 
 /**
  * Pide una imagen sin pasar por la barra (otra variante, reintentar).
- * El servidor redirige al estudio, así que desde la galería se navega allá.
+ * El servidor redirige a la conversación, así que desde la galería se navega allá.
  */
 export function requestGeneration(
     data: GenerationRequest,
@@ -27,6 +29,7 @@ export function requestGeneration(
             seed: data.seed ?? null,
             width: custom ? (data.width ?? null) : null,
             height: custom ? (data.height ?? null) : null,
+            conversation_id: data.conversation_id ?? null,
         },
         { preserveScroll: true, ...(only ? { only } : {}) },
     );

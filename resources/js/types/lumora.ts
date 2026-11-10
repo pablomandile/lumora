@@ -3,6 +3,7 @@ export type ImageFormat = 'png' | 'jpg' | 'webp';
 export type ImageItem = {
     id: string;
     generation_id: string;
+    conversation_id: string | null;
     url: string;
     thumb_url: string;
     downloads: Record<ImageFormat, string>;
@@ -17,6 +18,12 @@ export type ImageItem = {
     seed: number | null;
     steps: number | null;
     run_seconds: number | null;
+};
+
+/** Una conversación del estudio, como aparece en el menú. */
+export type ConversationItem = {
+    id: string;
+    title: string;
 };
 
 export type GenerationStatus =

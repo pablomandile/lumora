@@ -20,6 +20,11 @@ class StoreGenerationRequest extends FormRequest
 
         return [
             'prompt' => ['required', 'string', 'max:2000'],
+            // Solo en una conversación propia; sin ella se abre una nueva.
+            'conversation_id' => [
+                'nullable', 'string',
+                Rule::exists('conversations', 'id')->where('user_id', $this->user()?->id),
+            ],
             'model' => ['nullable', 'string', 'max:64'],
             'aspect' => ['nullable', 'string', Rule::in([...array_keys($aspects), 'custom'])],
             'width' => ['nullable', 'required_if:aspect,custom', 'integer', 'min:256', "max:{$max}"],

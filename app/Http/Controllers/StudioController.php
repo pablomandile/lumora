@@ -6,6 +6,7 @@ use App\Enums\GenerationStatus;
 use App\Http\Requests\StoreGenerationRequest;
 use App\Http\Resources\GenerationResource;
 use App\Models\AiModel;
+use App\Models\Conversation;
 use App\Models\Generation;
 use App\Models\User;
 use App\Services\Generations\GenerationService;
@@ -17,13 +18,28 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pantalla principal: la barra para pedir imágenes y los últimos resultados.
+ * Pantalla principal: una conversación con los pedidos de imagen y sus
+ * resultados. `/estudio` es una conversación nueva, todavía sin guardar: se
+ * crea con el primer pedido.
  */
 class StudioController extends Controller
 {
-    private const RECENT = 24;
+    /** Los últimos pedidos de una conversación que se muestran. */
+    private const THREAD = 100;
 
     public function index(Request $request, GenerationService $service): Response
+    {
+        return $this->render($request, $service, null);
+    }
+
+    public function show(Request $request, GenerationService $service, Conversation $conversation): Response
+    {
+        Gate::authorize('view', $conversation);
+
+        return $this->render($request, $service, $conversation);
+    }
+
+    private function render(Request $request, GenerationService $service, ?Conversation $conversation): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -35,9 +51,9 @@ class StudioController extends Controller
         $seed = $request->query('seed');
 
         return Inertia::render('Studio', [
-            'generations' => fn () => $this->recent($user, $request),
+            'conversation' => $conversation ? ['id' => $conversation->id, 'title' => $conversation->title] : null,
+            'generations' => fn () => $conversation ? $this->thread($conversation, $request) : [],
             'quota' => fn () => $this->quota($user, $service),
-            'has_more' => fn () => $user->images()->count() > self::RECENT,
             'models' => AiModel::query()->availableFor($user)->get()->map(fn (AiModel $m) => [
                 'key' => $m->key,
                 'label' => $m->label,
@@ -65,13 +81,19 @@ class StudioController extends Controller
         /** @var array{prompt: string, negative_prompt?: string|null, model?: string|null, aspect?: string|null, width?: int|null, height?: int|null, seed?: int|null, steps?: int|null} $data */
         $data = $request->validated();
 
+        $conversation = $request->filled('conversation_id')
+            ? $user->conversations()->findOrFail($request->string('conversation_id')->toString())
+            : null;
+
         try {
-            $service->create($user, $data);
+            $generation = $service->create($user, $data, $conversation);
         } catch (QuotaExceededException $e) {
             Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+            return $conversation ? to_route('conversations.show', $conversation) : to_route('dashboard');
         }
 
-        return to_route('dashboard');
+        return to_route('conversations.show', $generation->conversation_id);
     }
 
     /** Descarta una generación que falló (las que fallan no cuentan para la cuota). */
@@ -86,17 +108,22 @@ class StudioController extends Controller
         return back();
     }
 
-    /** @return array<int, array<string, mixed>> */
-    private function recent(User $user, Request $request): array
+    /**
+     * Los pedidos de la conversación, del más viejo al más nuevo (como un chat).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function thread(Conversation $conversation, Request $request): array
     {
         // Las terminadas cuya imagen se borró no se muestran.
-        return $user->generations()
+        return $conversation->generations()
             ->with('image')
             ->where(fn ($q) => $q->where('status', '!=', GenerationStatus::Done->value)->orWhereHas('image'))
             ->latest()
             ->latest('id')
-            ->limit(self::RECENT)
+            ->limit(self::THREAD)
             ->get()
+            ->reverse()
             ->map(fn (Generation $g) => (new GenerationResource($g))->resolve($request))
             ->values()
             ->all();
