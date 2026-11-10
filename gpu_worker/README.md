@@ -131,16 +131,26 @@ curl -H "Authorization: Bearer TU_TOKEN" -o prueba.png http://127.0.0.1:8766/job
 
 ## 3. Que arranque solo con Windows
 
-Abrí una terminal **como administrador** y ejecutá (ajustá las rutas):
+`iniciar-lumora.bat` arranca todo: ComfyUI en una ventana minimizada, espera a que responda (hasta
+3 minutos) y recién ahí arranca el gateway en otra. Si alguno ya está corriendo, no lo abre de nuevo,
+así que se puede ejecutar a mano las veces que haga falta. El túnel no hace falta: cloudflared quedó
+instalado como servicio de Windows y arranca solo.
+
+`iniciar-comfyui.bat` detecta la instalación: si existe la instancia "Lumora" de **Comfy Desktop**
+la usa sin abrir la app de escritorio (con su Python y sus rutas de modelos); si no, la portable de
+`COMFY_DIR`. Con ComfyUI ya levantado por este script, no lances además la instancia desde Comfy
+Desktop: las dos quieren el puerto 8188.
+
+Para que arranque al iniciar sesión, abrí una terminal **como administrador** y ejecutá (ajustá la ruta):
 
 ```
-schtasks /Create /TN "Lumora ComfyUI" /SC ONLOGON /RL HIGHEST /TR "C:\lumora\gpu_worker\iniciar-comfyui.bat"
-schtasks /Create /TN "Lumora Gateway" /SC ONLOGON /RL HIGHEST /TR "C:\lumora\gpu_worker\iniciar-gateway.bat" /DELAY 0000:30
+schtasks /Create /TN "Lumora" /SC ONLOGON /RL HIGHEST /DELAY 0000:20 /TR "\"C:\laragon\www\lumora\gpu_worker\iniciar-lumora.bat\""
 ```
 
-Arrancan cuando iniciás sesión. El gateway espera 30 segundos para que ComfyUI llegue a
-levantar. Si la PC tiene que funcionar sin que nadie inicie sesión, configurá el inicio de sesión
-automático de Windows (`netplwiz`).
+Para probarla sin reiniciar: `schtasks /Run /TN "Lumora"`. Para sacarla: `schtasks /Delete /TN "Lumora" /F`.
+
+Si la PC tiene que funcionar sin que nadie inicie sesión, configurá el inicio de sesión automático
+de Windows (`netplwiz`).
 
 ---
 
