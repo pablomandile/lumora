@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\StatsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\ConversationController;
@@ -77,6 +78,8 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::post('usuarios/{user}/rechazar', [UserController::class, 'reject'])->name('users.reject');
         Route::patch('usuarios/{user}/rol', [UserController::class, 'updateRole'])->name('users.role');
         Route::patch('usuarios/{user}/cuota', [UserController::class, 'updateQuota'])->name('users.quota');
+
+        Route::get('estadisticas', StatsController::class)->name('stats');
 
         Route::get('ajustes', [SettingsController::class, 'index'])->name('settings.index');
         Route::put('ajustes', [SettingsController::class, 'update'])->name('settings.update');

@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Images, SlidersHorizontal, SquarePen, Users } from '@lucide/vue';
+import {
+    ChartColumn,
+    Images,
+    SlidersHorizontal,
+    SquarePen,
+    Users,
+} from '@lucide/vue';
 import { computed, onUnmounted } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import InstallAppButton from '@/components/InstallAppButton.vue';
@@ -18,6 +24,7 @@ import {
     useSidebar,
 } from '@/components/ui/sidebar';
 import { dashboard, gallery } from '@/routes';
+import { stats as adminStats } from '@/routes/admin';
 import { index as adminSettings } from '@/routes/admin/settings';
 import { index as adminUsers } from '@/routes/admin/users';
 import type { NavItem } from '@/types';
@@ -48,6 +55,11 @@ const mainNavItems = computed<NavItem[]>(() => [
     ...(page.props.auth.is_admin
         ? [
               { title: 'Usuarios', href: adminUsers(), icon: Users },
+              {
+                  title: 'Estadísticas',
+                  href: adminStats(),
+                  icon: ChartColumn,
+              },
               {
                   title: 'Ajustes',
                   href: adminSettings(),
