@@ -10,5 +10,11 @@ ingress:
   # Escribelo → worker de Whisper/Ollama (opcional: reemplaza al quick tunnel)
   - hostname: escribelo-gpu.bambudev.com.ar
     service: http://127.0.0.1:8765
+  # DocBrainer → Ollama. Ollama solo acepta Host "localhost": sin esto responde 403.
+  # Protegido con Cloudflare Access (service token), porque Ollama no pide credenciales.
+  - hostname: docbrainer-gpu.bambudev.com.ar
+    service: http://localhost:11434
+    originRequest:
+      httpHostHeader: localhost:11434
   # Todo lo demás: 404
   - service: http_status:404
