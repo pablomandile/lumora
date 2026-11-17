@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
-import { Expand, PencilLine, Shuffle, Sparkles } from '@lucide/vue';
+import { Expand, PencilLine, Shuffle, Sparkles, Wand } from '@lucide/vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import ImageViewer from '@/components/images/ImageViewer.vue';
@@ -18,6 +18,7 @@ import type {
     ModelOption,
     PromptPreset,
     Quota,
+    ReferenceThumb,
 } from '@/types';
 
 defineOptions({
@@ -34,7 +35,14 @@ const props = defineProps<{
     models: ModelOption[];
     aspects: AspectOption[];
     max_side: number;
-    prefill: { prompt: string; aspect: string | null; seed: number | null };
+    prefill: {
+        prompt: string;
+        aspect: string | null;
+        seed: number | null;
+        edit_image: ReferenceThumb | null;
+        model: string | null;
+        attachments: ReferenceThumb[];
+    };
 }>();
 
 const RELOAD = ['generations', 'quota'];
@@ -44,6 +52,9 @@ const isAdmin = computed(() => page.props.auth.is_admin);
 const bar = ref<InstanceType<typeof PromptBar> | null>(null);
 const bottom = ref<HTMLElement | null>(null);
 const viewing = ref<string | null>(null);
+
+/** Si hay un modelo de edición disponible (por ahora, solo el admin). */
+const canEdit = computed(() => props.models.some((m) => m.max_images > 0));
 
 const images = computed<ImageItem[]>(() =>
     props.generations.flatMap((g) => (g.image ? [g.image] : [])),
@@ -74,7 +85,11 @@ const examples = [
 ];
 
 function details(g: GenerationItem): string {
-    const parts = [g.aspect ?? `${g.width}×${g.height}`];
+    const parts = [
+        g.attachments.length
+            ? 'Edición'
+            : (g.aspect ?? `${g.width}×${g.height}`),
+    ];
 
     if (g.seed != null) {
         parts.push(`semilla ${g.seed}`);
@@ -117,20 +132,30 @@ function fill(preset: PromptPreset): void {
 
 function regenerate(g: {
     prompt: string;
+    model: string;
     aspect: string | null;
     width: number;
     height: number;
+    attachments: ReferenceThumb[];
 }): void {
     requestGeneration(
         {
             prompt: g.prompt,
+            model: g.model,
             aspect: g.aspect,
             width: g.width,
             height: g.height,
+            // Otra variante de una edición: con las mismas imágenes.
+            attachment_ids: g.attachments.map((a) => a.id),
             conversation_id: props.conversation?.id ?? null,
         },
         props.conversation ? RELOAD : undefined,
     );
+}
+
+/** "Editar esta imagen": pasa a la barra como imagen 1. */
+function editImage(image: ReferenceThumb): void {
+    bar.value?.editImage(image);
 }
 
 function dismiss(generation: GenerationItem): void {
@@ -143,9 +168,18 @@ function dismiss(generation: GenerationItem): void {
 onMounted(() => {
     scrollToBottom(false);
 
-    if (props.prefill.prompt) {
-        fill(props.prefill);
-        // Se limpia la URL para que recargar no vuelva a cargar el prompt.
+    const { prefill } = props;
+
+    if (prefill.prompt) {
+        fill(prefill);
+    }
+
+    if (prefill.edit_image) {
+        editImage(prefill.edit_image);
+    }
+
+    if (prefill.prompt || prefill.edit_image) {
+        // Se limpia la URL para que recargar no vuelva a cargar lo mismo.
         window.history.replaceState(window.history.state, '', dashboard().url);
     }
 });
@@ -179,6 +213,29 @@ onMounted(() => {
                         <div
                             class="max-w-[85%] rounded-2xl rounded-br-md bg-muted px-4 py-2.5"
                         >
+                            <div
+                                v-if="generation.attachments.length"
+                                class="mb-2 flex flex-wrap justify-end gap-1.5"
+                                data-test="turn-references"
+                            >
+                                <a
+                                    v-for="(
+                                        attachment, index
+                                    ) in generation.attachments"
+                                    :key="attachment.id"
+                                    :href="attachment.url"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="block rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                >
+                                    <img
+                                        :src="attachment.thumb_url"
+                                        :alt="`Imagen ${index + 1} del pedido`"
+                                        loading="lazy"
+                                        class="size-16 rounded-lg border object-cover"
+                                    />
+                                </a>
+                            </div>
                             <p
                                 class="text-sm break-words whitespace-pre-wrap"
                                 data-test="turn-prompt"
@@ -226,11 +283,24 @@ onMounted(() => {
                                         fill({
                                             prompt: generation.prompt,
                                             aspect: generation.aspect,
+                                            model: generation.model,
+                                            attachments: generation.attachments,
                                         })
                                     "
                                 >
                                     <PencilLine />
                                     Editar prompt
+                                </Button>
+                                <Button
+                                    v-if="canEdit"
+                                    size="sm"
+                                    variant="ghost"
+                                    class="text-muted-foreground"
+                                    data-test="edit-image"
+                                    @click="editImage(generation.image)"
+                                >
+                                    <Wand />
+                                    Editar esta imagen
                                 </Button>
                                 <Button
                                     size="sm"
@@ -299,7 +369,9 @@ onMounted(() => {
         v-model="viewing"
         :images="images"
         :reload="RELOAD"
+        :can-edit="canEdit"
         @reuse="fill"
         @vary="regenerate"
+        @edit="editImage"
     />
 </template>

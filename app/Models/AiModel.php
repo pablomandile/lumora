@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Modelo de imagen que ofrece el gateway (z-image-turbo, más adelante qwen-image).
+ * Modelo de imagen que ofrece el gateway (z-image-turbo, qwen-image-edit).
  *
  * @property int $id
  * @property string $key
@@ -52,5 +52,22 @@ class AiModel extends Model
     public function maxSteps(): int
     {
         return (int) ($this->defaults['max_steps'] ?? 20);
+    }
+
+    /** Imágenes de entrada que necesita como mínimo (los de edición, al menos 1). */
+    public function minImages(): int
+    {
+        return (int) ($this->defaults['min_images'] ?? 0);
+    }
+
+    /** 0 = texto a imagen, no acepta imágenes. */
+    public function maxImages(): int
+    {
+        return (int) ($this->defaults['max_images'] ?? 0);
+    }
+
+    public function editsImages(): bool
+    {
+        return $this->maxImages() > 0;
     }
 }

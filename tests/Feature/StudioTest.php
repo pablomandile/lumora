@@ -27,7 +27,10 @@ it('carga el prompt que llega por la URL', function () {
     $this->actingAs(User::factory()->create())
         ->get(route('dashboard', ['prompt' => 'un faro', 'aspect' => '16:9', 'seed' => '7']))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('prefill', ['prompt' => 'un faro', 'aspect' => '16:9', 'seed' => 7]));
+            ->where('prefill', [
+                'prompt' => 'un faro', 'aspect' => '16:9', 'seed' => 7,
+                'edit_image' => null, 'model' => null, 'attachments' => [],
+            ]));
 });
 
 it('pide una imagen y la encola', function () {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attachment;
 use App\Models\Generation;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class DataExportController extends Controller
                 'terminos_aceptados_el' => $user->terminos_aceptados_en?->toIso8601String(),
             ],
             'pedidos' => $user->generations()
-                ->with('image')
+                ->with(['image', 'attachments'])
                 ->oldest()
                 ->get()
                 ->map(fn (Generation $g) => [
@@ -57,6 +58,11 @@ class DataExportController extends Controller
                         'bytes' => $g->image->bytes,
                         'descargar_png' => route('images.download', [$g->image, 'png']),
                     ] : null,
+                    // Las fotos que subiste para editar (ya reducidas y sin metadatos).
+                    'imagenes_de_entrada' => $g->attachments->map(fn (Attachment $a) => [
+                        'posicion' => (int) $a->getRelationValue('pivot')->position,
+                        'descargar' => route('attachments.show', $a),
+                    ])->values()->all(),
                 ])
                 ->all(),
         ];

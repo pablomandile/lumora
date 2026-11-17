@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { ArrowUp, Dices, SlidersHorizontal, X } from '@lucide/vue';
-import { computed, nextTick, ref, watch } from 'vue';
+import {
+    ArrowUp,
+    Dices,
+    ImagePlus,
+    SlidersHorizontal,
+    Wand,
+    X,
+} from '@lucide/vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
 import AspectIcon from '@/components/studio/AspectIcon.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +25,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { store } from '@/routes/generations';
-import type { AspectOption, ModelOption, PromptPreset, Quota } from '@/types';
+import type {
+    AspectOption,
+    ModelOption,
+    PromptPreset,
+    Quota,
+    ReferenceThumb,
+} from '@/types';
 
 const props = defineProps<{
     aspects: AspectOption[];
@@ -32,19 +46,43 @@ const props = defineProps<{
 const emit = defineEmits<{ submitted: [] }>();
 
 const PROMPT_MAX = 2000;
+/** Lo mismo que valida el servidor (StoreGenerationRequest::MAX_UPLOAD_KB). */
+const UPLOAD_MAX_MB = 15;
+const UPLOAD_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+/**
+ * Una imagen de entrada en la barra. Se mandan en este orden: una imagen de la
+ * galería ("Editar esta imagen"), las ya subidas (otra edición con las mismas)
+ * y las fotos nuevas. La primera es la que se edita.
+ */
+type Reference =
+    | { kind: 'image'; id: string; thumb: string }
+    | { kind: 'attachment'; id: string; thumb: string }
+    | { kind: 'file'; file: File; thumb: string };
+
+const ORDER: Record<Reference['kind'], number> = {
+    image: 0,
+    attachment: 1,
+    file: 2,
+};
+
+const textModels = computed(() => props.models.filter((m) => !m.max_images));
+const editModels = computed(() => props.models.filter((m) => m.max_images > 0));
 
 const form = useForm({
     prompt: '',
     aspect: '1:1' as string,
     seed: '' as string | number,
-    model: props.models[0]?.key ?? '',
+    model: (textModels.value[0] ?? props.models[0])?.key ?? '',
     steps: '' as string | number,
     width: 1024 as string | number,
     height: 1024 as string | number,
 });
 
 const textarea = ref<HTMLTextAreaElement | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
 const showOptions = ref(false);
+const references = ref<Reference[]>([]);
 
 const currentAspect = computed(() =>
     props.aspects.find((aspect) => aspect.key === form.aspect),
@@ -52,20 +90,135 @@ const currentAspect = computed(() =>
 const currentModel = computed(
     () => props.models.find((m) => m.key === form.model) ?? props.models[0],
 );
+const editing = computed(() => (currentModel.value?.max_images ?? 0) > 0);
+const maxReferences = computed(() => editModels.value[0]?.max_images ?? 0);
+const missingReference = computed(
+    () => references.value.length < (currentModel.value?.min_images ?? 0),
+);
 const outOfQuota = computed(() => props.quota.remaining === 0);
 const canSubmit = computed(
     () =>
         form.prompt.trim().length > 0 &&
         form.prompt.length <= PROMPT_MAX &&
+        !missingReference.value &&
         !form.processing &&
         !outOfQuota.value,
 );
+const placeholder = computed(() =>
+    editing.value
+        ? references.value.length > 1
+            ? // Sin "conservando…", el modelo pega a la persona entera de la foto.
+              'Ej.: cambiá la cara de la mujer por la de la imagen 2, conservando su ropa y su postura'
+            : 'Ej.: cambiá el texto del cartel por «ABIERTO»'
+        : 'Describí la imagen que querés crear…',
+);
+
+// La sugerencia larga ocupa más de una línea: el cuadro crece para mostrarla.
+watch(placeholder, () => nextTick(autosize));
+
+// Con imágenes va el modelo de edición; sin ellas, el de texto a imagen.
+watch(
+    () => references.value.length,
+    (count) => {
+        if (count > 0 && !editing.value && editModels.value[0]) {
+            form.model = editModels.value[0].key;
+        } else if (count === 0 && editing.value && textModels.value[0]) {
+            form.model = textModels.value[0].key;
+        }
+    },
+);
+
+// Elegir a mano un modelo de texto a imagen deja las imágenes sin uso.
+watch(
+    () => form.model,
+    () => {
+        if (!editing.value && references.value.length) {
+            clearReferences();
+            toast.info('Se quitaron las imágenes: ese modelo no las usa.');
+        }
+    },
+);
+
+function addReference(reference: Reference): void {
+    if (references.value.length >= maxReferences.value) {
+        toast.error(`Podés usar hasta ${maxReferences.value} imágenes.`);
+
+        return;
+    }
+
+    references.value = [...references.value, reference].sort(
+        (a, b) => ORDER[a.kind] - ORDER[b.kind],
+    );
+}
+
+function removeReference(index: number): void {
+    const [removed] = references.value.splice(index, 1);
+
+    if (removed?.kind === 'file') {
+        URL.revokeObjectURL(removed.thumb);
+    }
+}
+
+function clearReferences(): void {
+    references.value.forEach((r) => {
+        if (r.kind === 'file') {
+            URL.revokeObjectURL(r.thumb);
+        }
+    });
+    references.value = [];
+}
+
+onBeforeUnmount(clearReferences);
+
+function pickFiles(): void {
+    fileInput.value?.click();
+}
+
+function onFiles(event: Event): void {
+    const input = event.target as HTMLInputElement;
+
+    for (const file of Array.from(input.files ?? [])) {
+        if (!UPLOAD_TYPES.includes(file.type)) {
+            toast.error(`«${file.name}» no es una imagen JPG, PNG o WebP.`);
+            continue;
+        }
+
+        if (file.size > UPLOAD_MAX_MB * 1024 * 1024) {
+            toast.error(`«${file.name}» pesa más de ${UPLOAD_MAX_MB} MB.`);
+            continue;
+        }
+
+        addReference({ kind: 'file', file, thumb: URL.createObjectURL(file) });
+    }
+
+    // Para poder elegir el mismo archivo otra vez después de quitarlo.
+    input.value = '';
+    nextTick(() => textarea.value?.focus());
+}
+
+function focusEnd(): void {
+    nextTick(() => {
+        autosize();
+        textarea.value?.focus();
+        textarea.value?.setSelectionRange(
+            form.prompt.length,
+            form.prompt.length,
+        );
+    });
+}
+
+/** "Editar esta imagen": una imagen propia de la galería pasa a ser la imagen 1. */
+function editImage(image: ReferenceThumb): void {
+    references.value = references.value.filter((r) => r.kind !== 'image');
+    addReference({ kind: 'image', id: image.id, thumb: image.thumb_url });
+    focusEnd();
+}
 const hasFixedSeed = computed(() => String(form.seed).trim() !== '');
 const optionsCount = computed(
     () =>
         Number(hasFixedSeed.value) +
         Number(String(form.steps).trim() !== '') +
-        Number(form.aspect === 'custom'),
+        Number(form.aspect === 'custom' && !editing.value),
 );
 
 const quotaText = computed(() => {
@@ -120,17 +273,27 @@ function submit(): void {
         return;
     }
 
+    const refs = references.value;
+    // Editando, la salida toma la proporción de la imagen 1: no va aspecto.
+    const aspect = editing.value ? null : form.aspect;
+
     form.transform((data) => ({
         prompt: data.prompt,
         model: data.model || null,
-        aspect: data.aspect,
+        aspect,
         seed: String(data.seed).trim() === '' ? null : Number(data.seed),
         steps:
             props.isAdmin && String(data.steps).trim() !== ''
                 ? Number(data.steps)
                 : null,
-        width: data.aspect === 'custom' ? Number(data.width) : null,
-        height: data.aspect === 'custom' ? Number(data.height) : null,
+        width: aspect === 'custom' ? Number(data.width) : null,
+        height: aspect === 'custom' ? Number(data.height) : null,
+        image_ids: refs.flatMap((r) => (r.kind === 'image' ? [r.id] : [])),
+        attachment_ids: refs.flatMap((r) =>
+            r.kind === 'attachment' ? [r.id] : [],
+        ),
+        // Con un archivo adentro, Inertia lo manda como multipart.
+        images: refs.flatMap((r) => (r.kind === 'file' ? [r.file] : [])),
         conversation_id: props.conversationId,
     })).post(store().url, {
         preserveScroll: true,
@@ -142,6 +305,7 @@ function submit(): void {
         onSuccess: () => {
             // Como en un chat: el pedido pasa al hilo y la caja queda libre.
             form.prompt = '';
+            clearReferences();
             nextTick(autosize);
             emit('submitted');
         },
@@ -162,17 +326,20 @@ function fill(preset: PromptPreset): void {
         showOptions.value = true;
     }
 
-    nextTick(() => {
-        autosize();
-        textarea.value?.focus();
-        textarea.value?.setSelectionRange(
-            form.prompt.length,
-            form.prompt.length,
-        );
-    });
+    // Una edición vuelve con sus mismas imágenes; un prompt de texto, sin ninguna.
+    clearReferences();
+    (preset.attachments ?? []).forEach((a) =>
+        addReference({ kind: 'attachment', id: a.id, thumb: a.thumb_url }),
+    );
+
+    if (preset.model && props.models.some((m) => m.key === preset.model)) {
+        form.model = preset.model;
+    }
+
+    focusEnd();
 }
 
-defineExpose({ fill });
+defineExpose({ fill, editImage });
 </script>
 
 <template>
@@ -181,7 +348,40 @@ defineExpose({ fill });
         data-test="prompt-bar"
         @submit.prevent="submit"
     >
-        <label for="prompt" class="sr-only">Describí la imagen</label>
+        <ul
+            v-if="references.length"
+            class="flex flex-wrap gap-2 px-3 pt-3"
+            aria-label="Imágenes para editar"
+            data-test="references"
+        >
+            <li
+                v-for="(reference, index) in references"
+                :key="reference.thumb"
+                class="relative"
+            >
+                <img
+                    :src="reference.thumb"
+                    :alt="`Imagen ${index + 1}`"
+                    class="size-16 rounded-lg border object-cover"
+                />
+                <span
+                    class="absolute bottom-1 left-1 rounded bg-black/60 px-1 text-[10px] leading-4 font-medium text-white"
+                    >{{ index + 1 }}</span
+                >
+                <button
+                    type="button"
+                    class="absolute -top-1.5 -right-1.5 flex size-6 items-center justify-center rounded-full border bg-background shadow-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    :aria-label="`Quitar la imagen ${index + 1}`"
+                    @click="removeReference(index)"
+                >
+                    <X class="size-3.5" />
+                </button>
+            </li>
+        </ul>
+
+        <label for="prompt" class="sr-only">{{
+            editing ? 'Qué querés cambiar' : 'Describí la imagen'
+        }}</label>
         <textarea
             id="prompt"
             ref="textarea"
@@ -189,7 +389,7 @@ defineExpose({ fill });
             name="prompt"
             rows="1"
             :maxlength="PROMPT_MAX"
-            placeholder="Describí la imagen que querés crear…"
+            :placeholder="placeholder"
             class="block max-h-[220px] min-h-12 w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-base outline-none placeholder:text-muted-foreground"
             enterkeyhint="send"
             @keydown="onKeydown"
@@ -264,7 +464,10 @@ defineExpose({ fill });
                         class="h-8"
                     />
                 </div>
-                <div v-if="form.aspect === 'custom'" class="grid gap-1.5">
+                <div
+                    v-if="form.aspect === 'custom' && !editing"
+                    class="grid gap-1.5"
+                >
                     <Label>Tamaño libre (múltiplos de 16)</Label>
                     <div class="flex items-center gap-1.5">
                         <Input
@@ -299,8 +502,51 @@ defineExpose({ fill });
             {{ Object.values(form.errors)[0] }}
         </p>
 
+        <p
+            v-if="editing && missingReference"
+            class="px-4 pt-1 text-xs text-muted-foreground"
+        >
+            Adjuntá la imagen que querés editar.
+        </p>
+
         <div class="flex items-center gap-1.5 px-2 pt-1 pb-2">
-            <DropdownMenu>
+            <template v-if="editModels.length">
+                <input
+                    ref="fileInput"
+                    type="file"
+                    :accept="UPLOAD_TYPES.join(',')"
+                    multiple
+                    class="sr-only"
+                    tabindex="-1"
+                    aria-hidden="true"
+                    data-test="file-input"
+                    @change="onFiles"
+                />
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="gap-1.5 rounded-full px-2.5"
+                    :disabled="references.length >= maxReferences"
+                    data-test="attach"
+                    @click="pickFiles"
+                >
+                    <ImagePlus />
+                    <span class="sr-only sm:not-sr-only">Imagen</span>
+                </Button>
+            </template>
+
+            <span
+                v-if="editing"
+                class="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-full px-2 text-sm text-muted-foreground"
+                data-test="edit-mode"
+                :title="currentModel?.description ?? undefined"
+            >
+                <Wand class="size-4 shrink-0" />
+                <span class="truncate">{{ currentModel?.label }}</span>
+            </span>
+
+            <DropdownMenu v-else>
                 <DropdownMenuTrigger as-child>
                     <Button
                         type="button"

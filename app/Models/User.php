@@ -134,6 +134,12 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $this->hasMany(Image::class);
     }
 
+    /** @return HasMany<Attachment, $this> */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(Attachment::class);
+    }
+
     public function effectiveDailyQuota(): ?int
     {
         if ($this->isAdmin()) {
@@ -163,6 +169,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         // los archivos y las sesiones abiertas hay que borrarlos a mano.
         static::deleting(function (User $user): void {
             Storage::disk('local')->deleteDirectory("images/{$user->id}");
+            Storage::disk('local')->deleteDirectory("attachments/{$user->id}");
             DB::table('sessions')->where('user_id', $user->id)->delete();
         });
     }

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import logging
 import os
 import time
@@ -14,7 +15,7 @@ from typing import Any
 
 from .comfy import ComfyClient, ComfyError, OllamaClient
 from .config import Settings
-from .workflows import GenerationRequest, build_workflow, validate
+from .workflows import INPUT_SUBFOLDER, MODELS, GenerationRequest, build_workflow, validate
 
 log = logging.getLogger("lumora.jobs")
 
@@ -70,6 +71,8 @@ class JobManager:
         self.queue: asyncio.Queue[str] = asyncio.Queue()
         self.current: str | None = None
         self.durations: list[float] = []
+        # Lo que tardaron las últimas de cada modelo: editar tarda ~6x más que Z-Image.
+        self.model_durations: dict[str, list[float]] = {}
         self.last_activity = time.time()
         self.models_loaded = False
         self._tasks: list[asyncio.Task] = []
@@ -119,8 +122,65 @@ class JobManager:
         )
         return next((i + 1 for i, j in enumerate(queued) if j.id == job.id), None)
 
-    def avg_seconds(self) -> float | None:
-        return sum(self.durations) / len(self.durations) if self.durations else None
+    def avg_seconds(self, model: str | None = None) -> float | None:
+        """Promedio de las últimas generaciones; de un modelo, o la estimación inicial si no hay datos."""
+        if model is None:
+            return sum(self.durations) / len(self.durations) if self.durations else None
+        measured = self.model_durations.get(model)
+        if measured:
+            return sum(measured) / len(measured)
+        spec = MODELS.get(model)
+        return spec.avg_hint_seconds if spec else None
+
+    def avg_by_model(self) -> dict[str, float]:
+        return {k: round(sum(v) / len(v), 1) for k, v in self.model_durations.items() if v}
+
+    # -- imágenes de entrada -------------------------------------------------
+
+    async def store_input(self, data: bytes, ext: str) -> str:
+        """Sube una imagen de entrada a ComfyUI. El nombre es el hash del
+        contenido: subir dos veces la misma (un reintento) no duplica nada."""
+        name = f"{hashlib.sha256(data).hexdigest()[:40]}.{ext}"
+        await self.comfy.upload_image(name, data, INPUT_SUBFOLDER)
+        return name
+
+    def _inputs_in_use(self) -> set[str]:
+        return {
+            name
+            for j in self.jobs.values()
+            if j.status in ("queued", "running")
+            for name in j.request.images
+        }
+
+    def _input_dir(self) -> Path | None:
+        base = self.settings.comfy_input_dir
+        return Path(base) / INPUT_SUBFOLDER if base else None
+
+    def _release_inputs(self, job: Job) -> None:
+        """Las fotos de los usuarios no quedan en la PC una vez usadas."""
+        folder = self._input_dir()
+        if folder is None or not job.request.images:
+            return
+        in_use = self._inputs_in_use()
+        for name in job.request.images:
+            if name not in in_use:
+                with contextlib.suppress(OSError):
+                    (folder / name).unlink()
+
+    def _sweep_inputs(self, now: float) -> None:
+        """Las subidas que nunca llegaron a un trabajo (un /generate que falló)."""
+        folder = self._input_dir()
+        if folder is None or not folder.is_dir():
+            return
+        in_use = self._inputs_in_use()
+        for path in folder.iterdir():
+            with contextlib.suppress(OSError):
+                if (
+                    path.is_file()
+                    and path.name not in in_use
+                    and now - path.stat().st_mtime > self.settings.input_ttl_seconds
+                ):
+                    path.unlink()
 
     def pending_count(self) -> int:
         return sum(1 for j in self.jobs.values() if j.status in ("queued", "running"))
@@ -153,6 +213,7 @@ class JobManager:
                 job.finished_at = time.time()
                 self.current = None
                 self.last_activity = time.time()
+                self._release_inputs(job)
 
     async def _run(self, job: Job) -> None:
         job.status = "running"
@@ -175,7 +236,7 @@ class JobManager:
                 if image:
                     job.image = image
                     job.status = "done"
-                    self._remember_duration(time.time() - job.started_at)
+                    self._remember_duration(job.request.model, time.time() - job.started_at)
                     return
                 if status.get("completed"):
                     raise ComfyError("ComfyUI terminó pero no devolvió ninguna imagen.")
@@ -199,8 +260,9 @@ class JobManager:
         except Exception as exc:  # noqa: BLE001 — si Ollama no responde, se sigue igual
             log.warning("No se pudo liberar VRAM de Ollama: %s", exc)
 
-    def _remember_duration(self, seconds: float) -> None:
+    def _remember_duration(self, model: str, seconds: float) -> None:
         self.durations = (self.durations + [seconds])[-10:]
+        self.model_durations[model] = (self.model_durations.get(model, []) + [seconds])[-10:]
 
     # -- mantenimiento -----------------------------------------------------
 
@@ -212,6 +274,8 @@ class JobManager:
             for job in list(self.jobs.values()):
                 if job.finished_at and now - job.finished_at > self.settings.job_ttl_seconds:
                     self.forget(job)
+
+            self._sweep_inputs(now)
 
             idle = self.settings.idle_free_seconds
             if (

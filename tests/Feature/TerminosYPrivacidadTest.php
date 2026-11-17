@@ -2,10 +2,13 @@
 
 use App\Enums\GenerationStatus;
 use App\Http\Middleware\AceptoTerminos;
+use App\Models\Attachment;
 use App\Models\Generation;
 use App\Models\Image;
 use App\Models\User;
+use App\Services\Images\AttachmentStore;
 use App\Services\Images\ImageStore;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
@@ -127,6 +130,7 @@ it('las exentas con sesión son exactamente las que se listan', function () {
         ->all();
 
     expect($exentasConSesion)->toBe([
+        'attachments.show',
         'exportacion.datos',
         'images.download',
         'logout',
@@ -208,6 +212,24 @@ it('la papelera se vacía a los días que promete la política, aunque no haya r
 
     $politica = (string) file_get_contents(resource_path('legales/privacidad.md'));
     expect($politica)->toContain('**'.Image::TRASH_DAYS.' días**');
+});
+
+it('lo que los textos prometen de las imágenes subidas coincide con el código', function () {
+    $terminos = (string) file_get_contents(resource_path('legales/terminos.md'));
+    $politica = (string) file_get_contents(resource_path('legales/privacidad.md'));
+    $gateway = (string) file_get_contents(base_path('gpu_worker/lumora_gateway/config.py'));
+
+    // Cuántas por pedido.
+    expect($terminos)->toContain('hasta '.Attachment::MAX_PER_GENERATION.' imágenes por pedido');
+    // De la PC se borran al usarse o, si algo falla, a la hora (INPUT_TTL_SECONDS del gateway).
+    expect($politica)->toContain('a más tardar en una hora')
+        ->and($gateway)->toContain('"INPUT_TTL_SECONDS", 3600')
+        ->and($gateway)->toContain('COMFY_INPUT_DIR');
+    // Se achican y pierden los metadatos (lo prueba EditarImagenesTest) y se borran a diario.
+    expect($politica)->toContain('les borramos los datos ocultos')
+        ->and(AttachmentStore::MAX_SIDE)->toBeLessThanOrEqual(2048);
+    $schedule = collect(app(Schedule::class)->events())->map(fn ($e) => $e->command)->implode(' ');
+    expect($schedule)->toContain('attachments:prune');
 });
 
 it('Perfil ofrece descargar los datos, que es lo que promete la política', function () {

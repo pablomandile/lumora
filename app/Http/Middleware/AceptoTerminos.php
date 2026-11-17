@@ -37,6 +37,7 @@ class AceptoTerminos
         'profile.destroy',
         'exportacion.datos',
         'images.download',
+        'attachments.show',
         'verification.*',
         'storage.*',
     ];

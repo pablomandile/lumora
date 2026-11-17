@@ -55,6 +55,17 @@ class ComfyClient:
         r.raise_for_status()
         return r.content
 
+    async def upload_image(self, name: str, data: bytes, subfolder: str) -> None:
+        """Deja una imagen en la carpeta input de ComfyUI (la reemplaza si existe)."""
+        r = await self.http.post(
+            f"{self.base_url}/upload/image",
+            files={"image": (name, data)},
+            data={"subfolder": subfolder, "overwrite": "true", "type": "input"},
+            timeout=60,
+        )
+        if r.status_code >= 400:
+            raise ComfyError(f"ComfyUI no aceptó la imagen ({r.status_code}): {r.text[:200]}")
+
     async def interrupt(self) -> None:
         await self.http.post(f"{self.base_url}/interrupt", timeout=5)
 

@@ -20,6 +20,7 @@ const props = defineProps<{
     images: { data: ImageItem[] };
     filters: { q: string; favoritas: boolean };
     total: number;
+    can_edit: boolean;
 }>();
 
 const search = ref(props.filters.q);
@@ -78,6 +79,15 @@ function reuse(preset: PromptPreset): void {
                 prompt: preset.prompt,
                 ...(preset.aspect ? { aspect: preset.aspect } : {}),
                 ...(preset.seed != null ? { seed: preset.seed } : {}),
+                // Una edición vuelve con su modelo y sus imágenes de entrada.
+                ...(preset.attachments?.length
+                    ? {
+                          modelo: preset.model ?? '',
+                          adjuntos: preset.attachments
+                              .map((a) => a.id)
+                              .join(','),
+                      }
+                    : {}),
             },
         }).url,
     );
@@ -86,12 +96,19 @@ function reuse(preset: PromptPreset): void {
 function vary(image: ImageItem): void {
     requestGeneration({
         prompt: image.prompt,
+        model: image.model,
         aspect: image.aspect,
         width: image.width,
         height: image.height,
+        attachment_ids: image.attachments.map((a) => a.id),
         // La variante va a la conversación donde nació la imagen.
         conversation_id: image.conversation_id,
     });
+}
+
+/** "Editar esta imagen": al estudio, con la imagen cargada en la barra. */
+function edit(image: ImageItem): void {
+    router.visit(dashboard({ query: { editar: image.id } }).url);
 }
 </script>
 
@@ -201,8 +218,10 @@ function vary(image: ImageItem): void {
         v-model="viewing"
         :images="items"
         :reload="['total']"
+        :can-edit="can_edit"
         @reuse="reuse"
         @vary="vary"
+        @edit="edit"
         @favorited="(image, value) => favorites.set(image.id, value)"
         @deleted="(image) => removed.add(image.id)"
     />

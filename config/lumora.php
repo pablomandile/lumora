@@ -42,6 +42,12 @@ return [
     // Lado máximo que puede pedir el admin con tamaño libre.
     'admin_max_side' => 2048,
 
+    /*
+    | Al editar, la imagen sale con la proporción de la primera imagen y esta
+    | cantidad de megapíxeles (Qwen Image Edit rinde mejor cerca de 1 MP).
+    */
+    'edit_megapixels' => 1.0,
+
     'gpu' => [
         // Cada cuánto se consulta el estado de la placa para el indicador.
         'status_ttl_seconds' => 30,

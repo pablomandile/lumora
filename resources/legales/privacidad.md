@@ -18,6 +18,7 @@ Lumora es un servicio personal de Pablo Mandile, en Argentina. Es el responsable
 
 - Cada pedido de imagen: el texto que escribiste (el _prompt_), el tamaño, la semilla, el modelo, la fecha y si salió bien o falló.
 - Las imágenes generadas (el PNG original y una miniatura) y cuáles marcaste como favoritas.
+- Las imágenes que subís para editar (una foto tuya, un flyer) y las que elegís de tu galería con _Editar esta imagen_. Al guardarlas las achicamos y les borramos los datos ocultos que traen los archivos de fotos, como la ubicación GPS, la fecha o el modelo del teléfono.
 
 **Datos técnicos**
 
@@ -32,12 +33,12 @@ No usamos herramientas de analítica, publicidad ni seguimiento de ningún tipo.
 - Para administrar las cuentas: aprobarlas, aplicar la cuota diaria y frenar abusos.
 - Para mandarte los mails del servicio: verificar tu email, avisarte que tu cuenta fue aprobada y recuperar la contraseña.
 
-**No vendemos tus datos, no los usamos para publicidad y no entrenamos modelos de inteligencia artificial con tus prompts ni con tus imágenes.**
+**No vendemos tus datos, no los usamos para publicidad y no entrenamos modelos de inteligencia artificial con tus prompts ni con tus imágenes.** Tampoco hacemos reconocimiento facial: una foto con una cara se usa solo para generar la imagen que pediste.
 
 ## Quién más los ve o los procesa
 
 - **El administrador de Lumora** puede ver las cuentas, los pedidos y las imágenes de todos los usuarios. Lo hace para mantener el servicio funcionando y controlar que no se use para lo que prohíben los términos.
-- **La placa que genera las imágenes** es una computadora del administrador. Tu prompt y los parámetros viajan hasta ella; ahí se genera la imagen, vuelve a Lumora y se borra de esa computadora en cuanto queda guardada. El modelo corre ahí mismo: tus prompts no se mandan a ningún servicio de inteligencia artificial de terceros.
+- **La placa que genera las imágenes** es una computadora del administrador. Tu prompt, los parámetros y, si editás, las imágenes que subiste viajan hasta ella; ahí se genera la imagen, vuelve a Lumora y se borra de esa computadora en cuanto queda guardada. Las imágenes que subiste también se borran de ahí apenas se usan (si algo falla, a más tardar en una hora). El modelo corre ahí mismo: ni tus prompts ni tus fotos se mandan a ningún servicio de inteligencia artificial de terceros.
 - **Cloudflare** (Cloudflare, Inc., Estados Unidos) transporta, cifrados, los pedidos entre Lumora y esa computadora.
 - **Hostinger** (Hostinger International Ltd.) aloja la aplicación, la base de datos y las imágenes, y envía los mails del servicio.
 
@@ -46,14 +47,15 @@ Lumora no tiene funciones para compartir imágenes con otras personas: tus imág
 ## Cuánto tiempo los guardamos
 
 - **Las imágenes** se guardan hasta que las borres. Cuando borrás una, queda **30 días** en una papelera y después se elimina del todo. Hoy no hay un plazo máximo para las que no borrás; si eso cambia, lo vamos a decir acá antes, y las favoritas no se borran nunca.
+- **Las imágenes que subís para editar** se guardan mientras algún pedido las use: mientras la imagen que salió de ellas esté en tu galería o en la papelera, o mientras el pedido esté pendiente o haya fallado (para poder reintentarlo). Cuando ya no las usa ningún pedido, se eliminan en uno o dos días.
 - **El registro de cada pedido** (el prompt, la fecha y el tamaño) queda en tu historial aunque borres la imagen, porque es lo que se usa para contar la cuota diaria. Se borra junto con la cuenta.
-- **Al eliminar la cuenta** se borran en el momento tu cuenta, tus pedidos, tus imágenes (archivos incluidos) y tus sesiones abiertas. Lo único que puede quedar, por un tiempo, es lo que esté en las copias de seguridad automáticas del hosting, que se van reemplazando solas.
+- **Al eliminar la cuenta** se borran en el momento tu cuenta, tus pedidos, tus imágenes, las que subiste para editar (archivos incluidos) y tus sesiones abiertas. Lo único que puede quedar, por un tiempo, es lo que esté en las copias de seguridad automáticas del hosting, que se van reemplazando solas.
 
 ## Qué podés hacer con tus datos
 
 Tenés derecho a acceder a tus datos, corregirlos y suprimirlos, y la mayor parte lo podés hacer vos mismo, sin pedirle nada a nadie:
 
-- **Acceder:** en _Configuración → Perfil_ está el botón **Descargar mis datos**, que baja un archivo con tu cuenta y todos tus pedidos. Las imágenes las podés bajar desde la galería, y el archivo trae el enlace de cada una.
+- **Acceder:** en _Configuración → Perfil_ está el botón **Descargar mis datos**, que baja un archivo con tu cuenta y todos tus pedidos. Las imágenes las podés bajar desde la galería, y el archivo trae el enlace de cada una, también de las que subiste para editar.
 - **Corregir:** tu nombre y tu email se cambian en _Configuración → Perfil_.
 - **Suprimir:** en _Configuración → Perfil_ podés eliminar tu cuenta. También podés borrar imágenes sueltas desde el visor.
 
@@ -69,7 +71,7 @@ No hay cookies de terceros.
 
 ## Seguridad
 
-La conexión con Lumora va siempre cifrada (HTTPS). Las imágenes no están en una carpeta pública: cada vez que se piden, Lumora controla que seas su dueño. La conexión con la placa también va cifrada y protegida con una clave. Ningún sistema es invulnerable, pero cuidamos lo que guardamos como si fuera nuestro.
+La conexión con Lumora va siempre cifrada (HTTPS). Las imágenes, las generadas y las que subís, no están en una carpeta pública: cada vez que se piden, Lumora controla que seas su dueño. La conexión con la placa también va cifrada y protegida con una clave. Ningún sistema es invulnerable, pero cuidamos lo que guardamos como si fuera nuestro.
 
 ## Menores
 

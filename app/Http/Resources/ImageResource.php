@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Attachment;
 use App\Models\Image;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -38,6 +39,13 @@ class ImageResource extends JsonResource
             'seed' => $generation->seed,
             'steps' => $generation->steps,
             'run_seconds' => $generation->run_seconds,
+            // Para pedir otra variante (o reusar el prompt) de una edición con las mismas imágenes.
+            'attachments' => $generation->relationLoaded('attachments')
+                ? $generation->attachments->map(fn (Attachment $a) => [
+                    'id' => $a->id,
+                    'thumb_url' => route('attachments.thumb', $a),
+                ])->values()->all()
+                : [],
         ];
     }
 }

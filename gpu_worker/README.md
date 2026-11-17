@@ -80,6 +80,34 @@ Descargá estos 3 archivos y ponelos en las carpetas indicadas, dentro de la car
 > (12.3 GB). Después cambiá `ZIMAGE_UNET` en el `.env` del gateway. Anda igual, pero un poco más
 > lento, porque ComfyUI pasa parte del modelo a la RAM.
 
+### Modelos para editar imágenes (Qwen Image Edit 2511)
+
+Para editar con imágenes subidas («poné esta cara en el flyer») hace falta además:
+
+1. El custom node **ComfyUI-GGUF**: clonalo en `custom_nodes` e instalá sus dependencias con
+   el Python **de ComfyUI** (en Desktop, el `.venv` de la instancia):
+
+    ```bat
+    cd %LOCALAPPDATA%\Comfy-Desktop\ComfyUI-Installs\Lumora\ComfyUI\custom_nodes
+    git clone https://github.com/city96/ComfyUI-GGUF
+    ..\.venv\Scripts\python.exe -m pip install -r ComfyUI-GGUF\requirements.txt
+    ```
+
+2. Estos archivos (unos 23 GB en total):
+
+| Archivo                                                                                                                                                                                                | Carpeta         | Tamaño  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- | ------- |
+| [qwen-image-edit-2511-Q4_K_M.gguf](https://huggingface.co/unsloth/Qwen-Image-Edit-2511-GGUF/resolve/main/qwen-image-edit-2511-Q4_K_M.gguf)                                                             | `unet`          | 12.2 GB |
+| [Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors](https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning/resolve/main/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors) | `loras`         | 0.8 GB  |
+| [qwen_2.5_vl_7b_fp8_scaled.safetensors](https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors)                              | `text_encoders` | 9.4 GB  |
+| [qwen_image_vae.safetensors](https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors)                                                              | `vae`           | 0.3 GB  |
+
+> La LoRA Lightning está **apareada con esta versión** del modelo: si cambiás uno, cambiá el otro.
+> En la RTX 3060 tarda ~70 s con una imagen y ~95 s con dos (4 pasos). Usa hasta ~20 GB de RAM.
+
+3. En el `.env` del gateway, `COMFY_INPUT_DIR` apuntando a la carpeta `input` de ComfyUI: así las
+   fotos de los usuarios se borran de la PC apenas se usan. Sin esa variable quedan ahí.
+
 ### Probar ComfyUI solo
 
 1. Abrí Comfy Desktop, o ejecutá `iniciar-comfyui.bat` si usás la portable.
@@ -141,13 +169,33 @@ la usa sin abrir la app de escritorio (con su Python y sus rutas de modelos); si
 `COMFY_DIR`. Con ComfyUI ya levantado por este script, no lances además la instancia desde Comfy
 Desktop: las dos quieren el puerto 8188.
 
-Para que arranque al iniciar sesión, abrí una terminal **como administrador** y ejecutá (ajustá la ruta):
+Para arrancarlo con un clic y al iniciar sesión, la forma simple (sin permisos de administrador) es
+un **acceso directo** a `iniciar-lumora.bat`, no una copia: el `.bat` busca los otros scripts en su
+propia carpeta y copiado a otro lado no los encuentra. Desde PowerShell:
+
+```powershell
+$bat = 'C:\laragon\www\lumora\gpu_worker\iniciar-lumora.bat'
+$sh = New-Object -ComObject WScript.Shell
+foreach ($dir in 'Desktop', 'Startup') {
+    $s = $sh.CreateShortcut((Join-Path ([Environment]::GetFolderPath($dir)) 'Iniciar Lumora.lnk'))
+    $s.TargetPath = $bat; $s.WorkingDirectory = Split-Path $bat; $s.WindowStyle = 7
+    $s.IconLocation = 'C:\laragon\www\lumora\public\favicon.ico,0'; $s.Save()
+}
+```
+
+Queda uno en el Escritorio y otro en la carpeta de Inicio (`Win+R` → `shell:startup`): borrar ese
+último lo saca del arranque. Después de iniciar sesión, la placa tarda hasta un minuto en verse en
+verde: ComfyUI tarda en cargar, el gateway espera a que responda, y el servidor guarda el estado 30 s.
+
+Alternativa, si hace falta que arranque con permisos elevados: una tarea programada, desde una
+terminal **como administrador** (ajustá la ruta):
 
 ```
 schtasks /Create /TN "Lumora" /SC ONLOGON /RL HIGHEST /DELAY 0000:20 /TR "\"C:\laragon\www\lumora\gpu_worker\iniciar-lumora.bat\""
 ```
 
 Para probarla sin reiniciar: `schtasks /Run /TN "Lumora"`. Para sacarla: `schtasks /Delete /TN "Lumora" /F`.
+No uses las dos formas a la vez (no rompe nada, pero el segundo arranque no hace nada).
 
 Si la PC tiene que funcionar sin que nadie inicie sesión, configurá el inicio de sesión automático
 de Windows (`netplwiz`).
@@ -194,6 +242,11 @@ cambia quién responde el DNS.
 4. En la pestaña **Public Hostnames** del túnel agregá:
     - `lumora-gpu` . `bambudev.com.ar` → Service **HTTP** → `127.0.0.1:8766`
     - (opcional) `escribelo-gpu` . `bambudev.com.ar` → **HTTP** → `127.0.0.1:8765`
+    - `docbrainer-gpu` . `bambudev.com.ar` → **HTTP** → `localhost:11434`, con **HTTP Host Header**
+      `localhost:11434` (en _Additional application settings → HTTP Settings_; si no, Ollama responde
+      403). Es el Ollama de la PC para DocBrainer. Ollama no pide credenciales, así que ese hostname
+      va protegido con una aplicación de **Cloudflare Access** con service token. Los pasos están en
+      el README de DocBrainer.
 
 **Método B — por línea de comandos** (si el panel te pide una tarjeta o preferís archivos):
 
@@ -244,18 +297,23 @@ Las dos apps usan la misma placa de 12 GB:
 
 ### API (todas las rutas piden `Authorization: Bearer <token>`)
 
-| Método | Ruta               | Para qué                                                                                                                                              |
-| ------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/health`          | estado de ComfyUI, placa, VRAM, cola y Ollama                                                                                                         |
-| GET    | `/models`          | modelos disponibles y sus límites                                                                                                                     |
-| POST   | `/generate`        | `{prompt, width, height, seed?, steps?, model?}` → 202 con `id`. 422 si el pedido es inválido, 429 si la cola está llena, 503 si ComfyUI está cerrado |
-| GET    | `/jobs/{id}`       | `status` (queued/running/done/failed), `position`, `progress` (estimado), `error`                                                                     |
-| GET    | `/jobs/{id}/image` | el PNG (header `X-Seed`)                                                                                                                              |
-| DELETE | `/jobs/{id}`       | borra la imagen de la PC, cuando Lumora ya la guardó                                                                                                  |
+| Método | Ruta               | Para qué                                                                                                                                                       |
+| ------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/health`          | estado de ComfyUI, placa, VRAM, cola y Ollama                                                                                                                  |
+| GET    | `/models`          | modelos disponibles y sus límites                                                                                                                              |
+| POST   | `/inputs`          | sube una imagen para editar (el cuerpo son los bytes; PNG, JPEG o WebP) → `{name}`. El nombre es el hash: subirla dos veces no duplica nada                    |
+| POST   | `/generate`        | `{prompt, width, height, seed?, steps?, model?, images?}` → 202 con `id`. 422 si el pedido es inválido, 429 si la cola está llena, 503 si ComfyUI está cerrado |
+| GET    | `/jobs/{id}`       | `status` (queued/running/done/failed), `position`, `progress` (estimado), `error`                                                                              |
+| GET    | `/jobs/{id}/image` | el PNG (header `X-Seed`)                                                                                                                                       |
+| DELETE | `/jobs/{id}`       | borra la imagen de la PC, cuando Lumora ya la guardó                                                                                                           |
 
 - `width` y `height` van de 256 a 2048 y tienen que ser múltiplos de 16.
 - Z-Image Turbo usa por defecto 9 pasos, cfg 1, sampler `euler`, scheduler `simple` y shift 3.
   Con cfg 1 el prompt negativo no tiene efecto.
+- `qwen-image-edit` necesita de 1 a 3 `images` (los `name` de `/inputs`; la primera es la que se
+  edita) y usa 4 pasos. `width`/`height` es el tamaño de salida: Lumora lo calcula con la
+  proporción de la imagen 1, a ~1 MP. Al pedido se le antepone una instrucción para que conserve
+  los textos y el resto de la imagen (`EDIT_PREFIX` en `workflows.py`).
 - `/generate` responde enseguida y Lumora consulta el estado. Así ningún pedido queda abierto más de
   100 segundos, que es el límite de Cloudflare.
 

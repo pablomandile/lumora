@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from dataclasses import replace
+from pathlib import Path
 
 import httpx
 import pytest
@@ -12,7 +14,7 @@ from fastapi.testclient import TestClient
 
 from lumora_gateway.app import create_app
 from lumora_gateway.config import Settings
-from lumora_gateway.workflows import GenerationRequest, InvalidRequest, build_workflow
+from lumora_gateway.workflows import EDIT_PREFIX, GenerationRequest, InvalidRequest, build_workflow
 
 TOKEN = "secreto-de-prueba"
 PNG = b"\x89PNG\r\n\x1a\nfake"
@@ -33,8 +35,17 @@ def settings(**over) -> Settings:
 class FakeBackends:
     """Simula las rutas de ComfyUI y de Ollama que usa el gateway."""
 
-    def __init__(self, fail: bool = False, vram_free_gb: float = 10.0, finish_after: int = 2, comfy_down: bool = False):
+    def __init__(
+        self,
+        fail: bool = False,
+        vram_free_gb: float = 10.0,
+        finish_after: int = 2,
+        comfy_down: bool = False,
+        input_dir: Path | None = None,
+    ):
         self.fail = fail
+        self.input_dir = input_dir
+        self.uploads: list[tuple[str, str]] = []
         self.comfy_down = comfy_down
         self.finish_after = finish_after
         self.vram_free = vram_free_gb * 1024**3
@@ -57,6 +68,16 @@ class FakeBackends:
                 "system": {"comfyui_version": "0.30.0"},
                 "devices": [{"name": "cuda:0 NVIDIA GeForce RTX 3060", "vram_total": 12 * 1024**3, "vram_free": self.vram_free}],
             })
+        if path == "/upload/image":
+            # Multipart armado por httpx: alcanza con buscar el nombre y la subcarpeta.
+            body = request.content
+            name = body.split(b'filename="', 1)[1].split(b'"', 1)[0].decode()
+            subfolder = body.split(b'name="subfolder"\r\n\r\n', 1)[1].split(b"\r\n", 1)[0].decode()
+            self.uploads.append((subfolder, name))
+            if self.input_dir is not None:
+                (self.input_dir / subfolder).mkdir(parents=True, exist_ok=True)
+                (self.input_dir / subfolder / name).write_bytes(b"x")
+            return httpx.Response(200, json={"name": name, "subfolder": subfolder, "type": "input"})
         if path == "/prompt":
             body = json.loads(request.content)
             pid = f"p{len(self.prompts) + 1}"
@@ -72,7 +93,8 @@ class FakeBackends:
                     "status_str": "error", "completed": False,
                     "messages": [["execution_error", {"node_type": "KSampler", "exception_message": "CUDA out of memory"}]],
                 }}})
-            prefix = self.prompts[pid]["10"]["inputs"]["filename_prefix"]
+            save = next(n for n in self.prompts[pid].values() if n["class_type"] == "SaveImage")
+            prefix = save["inputs"]["filename_prefix"]
             return httpx.Response(200, json={pid: {
                 "outputs": {"10": {"images": [{"filename": prefix.split("/")[1] + "_00001_.png", "subfolder": "lumora", "type": "output"}]}},
                 "status": {"status_str": "success", "completed": True, "messages": []},
@@ -154,7 +176,7 @@ def test_health_reports_gpu_and_ollama():
     assert data["status"] == "ok"
     assert data["gpu"]["vram_total_gb"] == 12.0
     assert data["ollama_models"] == ["qwen3:8b"]
-    assert data["models"] == ["z-image-turbo"]
+    assert data["models"] == ["z-image-turbo", "qwen-image-edit"]
 
 
 def test_health_degraded_when_comfy_is_down():
@@ -246,3 +268,177 @@ def test_job_reports_effective_steps():
     with client_for(FakeBackends()) as c:
         job = c.post("/generate", headers=AUTH, json={"prompt": "x"}).json()
     assert job["steps"] == 9
+
+
+# -- edición (Qwen Image Edit) ------------------------------------------------
+
+A = "a" * 40 + ".jpg"
+B = "b" * 40 + ".png"
+C = "c" * 40 + ".webp"
+
+
+def edit_request(images: list[str], **over) -> GenerationRequest:
+    data = {"model": "qwen-image-edit", "prompt": " poné la cara en el flyer ", "width": 944, "height": 1184, "images": images}
+    return GenerationRequest(**(data | over))
+
+
+def test_edit_workflow_with_three_images():
+    wf, _ = build_workflow(edit_request([A, B, C], seed=5), settings(qwen_edit_unet="otro.gguf"), "job")
+
+    assert wf["1"]["inputs"]["unet_name"] == "otro.gguf"
+    assert wf["6"]["inputs"]["lora_name"].startswith("Qwen-Image-Edit-2511-Lightning-4steps")
+    assert [wf[n]["inputs"]["image"] for n in ("7", "8", "9")] == [
+        f"lumora_inputs/{A}", f"lumora_inputs/{B}", f"lumora_inputs/{C}",
+    ]
+    # La imagen 1 se escala al tamaño pedido sin recortar.
+    assert wf["10"]["class_type"] == "ImageScale"
+    assert {k: wf["10"]["inputs"][k] for k in ("width", "height", "crop")} == {
+        "width": 944, "height": 1184, "crop": "disabled",
+    }
+    # La instrucción va con el prefijo que conserva el resto de la imagen.
+    assert wf["11"]["inputs"]["prompt"] == EDIT_PREFIX + "poné la cara en el flyer"
+    assert wf["12"]["inputs"]["prompt"] == ""
+    assert wf["16"]["inputs"]["steps"] == 4
+    assert wf["16"]["inputs"]["seed"] == 5
+    assert wf["18"]["inputs"]["filename_prefix"] == "lumora/job"
+
+
+def test_edit_workflow_prunes_unused_image_slots():
+    wf, _ = build_workflow(edit_request([A]), settings(), "job")
+
+    assert "8" not in wf and "9" not in wf
+    for enc in ("11", "12"):
+        assert wf[enc]["inputs"]["image1"] == ["10", 0]
+        assert "image2" not in wf[enc]["inputs"] and "image3" not in wf[enc]["inputs"]
+    # Ningún nodo quedó apuntando a uno podado.
+    refs = {v[0] for node in wf.values() for v in node["inputs"].values() if isinstance(v, list)}
+    assert refs <= set(wf)
+
+
+def test_edit_workflow_with_two_images_keeps_image2():
+    wf, _ = build_workflow(edit_request([A, B]), settings(), "job")
+    assert "8" in wf and "9" not in wf
+    assert wf["11"]["inputs"]["image2"] == ["8", 0]
+    assert "image3" not in wf["11"]["inputs"]
+
+
+@pytest.mark.parametrize("over, msg", [
+    ({"images": []}, "al menos 1"),
+    ({"images": [A, B, C, A]}, "hasta 3"),
+    ({"images": ["../../secreto.png"]}, "inválido"),
+    ({"images": ["A" * 40 + ".jpg"]}, "inválido"),
+    ({"steps": 9}, "steps"),
+])
+def test_invalid_edit_requests(over, msg):
+    with pytest.raises(InvalidRequest, match=msg):
+        build_workflow(edit_request(**({"images": [A]} | over)), settings(), "id")
+
+
+def test_text_to_image_model_rejects_images():
+    req = GenerationRequest(model="z-image-turbo", prompt="x", width=1024, height=1024, images=[A])
+    with pytest.raises(InvalidRequest, match="no acepta"):
+        build_workflow(req, settings(), "id")
+
+
+def test_upload_input_is_named_by_content(tmp_path):
+    fake = FakeBackends(input_dir=tmp_path)
+    jpg = b"\xff\xd8\xff\xe0" + b"foto" * 10
+    with client_for(fake, comfy_input_dir=str(tmp_path)) as c:
+        r1 = c.post("/inputs", headers=AUTH, content=jpg)
+        r2 = c.post("/inputs", headers=AUTH, content=jpg)
+
+    assert r1.status_code == 201
+    name = r1.json()["name"]
+    assert name.endswith(".jpg") and len(name) == 44
+    # Reintentar la subida no duplica nada.
+    assert r2.json()["name"] == name
+    assert fake.uploads == [("lumora_inputs", name)] * 2
+
+
+@pytest.mark.parametrize("body, status", [
+    (b"", 422),
+    (b"<?php echo 1; ?>", 422),
+    (b"\x89PNG\r\n\x1a\n" + b"0" * 2000, 413),
+])
+def test_upload_input_rejects_bad_files(body, status):
+    with client_for(FakeBackends(), max_input_bytes=1000) as c:
+        assert c.post("/inputs", headers=AUTH, content=body).status_code == status
+
+
+def test_upload_input_requires_token():
+    with client_for(FakeBackends()) as c:
+        assert c.post("/inputs", content=PNG).status_code == 401
+
+
+def test_full_edit_cycle_deletes_the_inputs(tmp_path):
+    fake = FakeBackends(input_dir=tmp_path)
+    with client_for(fake, comfy_input_dir=str(tmp_path)) as c:
+        face = c.post("/inputs", headers=AUTH, content=b"\xff\xd8\xff" + b"cara").json()["name"]
+        flyer = c.post("/inputs", headers=AUTH, content=PNG).json()["name"]
+        assert (tmp_path / "lumora_inputs" / face).exists()
+
+        r = c.post("/generate", headers=AUTH, json={
+            "model": "qwen-image-edit", "prompt": "poné mi cara", "width": 1024, "height": 1024,
+            "images": [flyer, face],
+        })
+        assert r.status_code == 202
+        assert r.json()["steps"] == 4
+        done = wait_for(c, r.json()["id"])
+
+    assert done["status"] == "done"
+    sent = next(iter(fake.prompts.values()))
+    assert sent["7"]["inputs"]["image"] == f"lumora_inputs/{flyer}"
+    assert sent["8"]["inputs"]["image"] == f"lumora_inputs/{face}"
+    # Las fotos no quedan en la PC.
+    assert not (tmp_path / "lumora_inputs" / face).exists()
+    assert not (tmp_path / "lumora_inputs" / flyer).exists()
+
+
+def test_inputs_shared_with_a_pending_job_are_kept(tmp_path):
+    fake = FakeBackends(input_dir=tmp_path, finish_after=10**6)
+    with client_for(fake, comfy_input_dir=str(tmp_path), job_timeout_seconds=5) as c:
+        name = c.post("/inputs", headers=AUTH, content=PNG).json()["name"]
+        body = {"model": "qwen-image-edit", "prompt": "x", "width": 1024, "height": 1024, "images": [name]}
+        first = c.post("/generate", headers=AUTH, json=body).json()
+        c.post("/generate", headers=AUTH, json=body)
+
+        manager = c.app.state.manager
+        manager._release_inputs(manager.get(first["id"]))
+        assert (tmp_path / "lumora_inputs" / name).exists()
+
+
+def test_sweep_removes_only_old_unused_inputs(tmp_path):
+    folder = tmp_path / "lumora_inputs"
+    folder.mkdir()
+    old, new = folder / A, folder / B
+    old.write_bytes(b"x")
+    new.write_bytes(b"x")
+    two_hours_ago = time.time() - 7200
+    os.utime(old, (two_hours_ago, two_hours_ago))
+
+    with client_for(FakeBackends(), comfy_input_dir=str(tmp_path)) as c:
+        c.app.state.manager._sweep_inputs(time.time())
+
+    assert not old.exists()
+    assert new.exists()
+
+
+def test_progress_uses_the_estimate_of_each_model():
+    with client_for(FakeBackends()) as c:
+        manager = c.app.state.manager
+        assert manager.avg_seconds("qwen-image-edit") == 90.0
+        assert manager.avg_seconds("z-image-turbo") == 16.0
+        manager._remember_duration("qwen-image-edit", 70.0)
+        manager._remember_duration("z-image-turbo", 14.0)
+        assert manager.avg_seconds("qwen-image-edit") == 70.0
+        assert c.get("/health", headers=AUTH).json()["queue"]["avg_seconds_by_model"] == {
+            "qwen-image-edit": 70.0, "z-image-turbo": 14.0,
+        }
+
+
+def test_models_endpoint_reports_images():
+    with client_for(FakeBackends()) as c:
+        models = {m["key"]: m for m in c.get("/models", headers=AUTH).json()}
+    assert models["qwen-image-edit"]["max_images"] == 3
+    assert models["qwen-image-edit"]["min_images"] == 1
+    assert models["z-image-turbo"]["max_images"] == 0

@@ -3,6 +3,7 @@
 use App\Enums\GenerationStatus;
 use App\Enums\UserRole;
 use App\Models\AppSetting;
+use App\Models\Attachment;
 use App\Models\Image;
 use App\Models\User;
 use App\Services\Generations\GenerationService;
@@ -125,5 +126,38 @@ Artisan::command('lumora:generate {email} {prompt} {--aspect=1:1} {--seed=} {--w
     return 0;
 })->purpose('Genera una imagen desde la terminal (para probar la placa)');
 
+Artisan::command('attachments:prune {--dry-run : Solo muestra cuántas se borrarían}', function () {
+    // Una imagen de entrada se conserva mientras la necesite algún pedido: uno
+    // pendiente o fallido (para reintentar), o uno cuya imagen siga en la
+    // galería o en la papelera. Cuando la imagen se borra del todo (papelera
+    // vencida, retención, conversación eliminada), la foto se va con ella.
+    // El margen de un día cubre las que se están por usar.
+    $query = Attachment::query()
+        ->where('created_at', '<', now()->subDay())
+        ->whereDoesntHave('generations', fn ($g) => $g->where(
+            fn ($q) => $q->where('status', '!=', GenerationStatus::Done->value)
+                ->orWhereHas('image', fn ($i) => $i->withTrashed()),
+        ));
+
+    if ($this->option('dry-run')) {
+        $this->info("Se borrarían {$query->count()} imágenes de entrada.");
+
+        return 0;
+    }
+
+    $deleted = 0;
+    $query->chunkById(200, function ($attachments) use (&$deleted) {
+        foreach ($attachments as $attachment) {
+            $attachment->delete();
+            $deleted++;
+        }
+    });
+
+    $this->info("Se borraron {$deleted} imágenes de entrada que ya no usa ningún pedido.");
+
+    return 0;
+})->purpose('Borra las imágenes de entrada (fotos subidas) que ya no usa ningún pedido');
+
 Schedule::command('gpu:probe')->everyMinute()->withoutOverlapping();
 Schedule::command('images:prune')->dailyAt('04:00');
+Schedule::command('attachments:prune')->dailyAt('04:10');

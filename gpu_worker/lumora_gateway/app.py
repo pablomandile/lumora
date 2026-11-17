@@ -1,17 +1,19 @@
 """
-Gateway de Lumora: expone ComfyUI (Z-Image Turbo) a Lumora por el túnel de Cloudflare.
+Gateway de Lumora: expone ComfyUI (Z-Image Turbo y Qwen Image Edit) a Lumora por el túnel de Cloudflare.
 
 Todas las rutas piden  Authorization: Bearer <LUMORA_GPU_TOKEN>.
 
     GET    /health              estado de ComfyUI, VRAM, cola y Ollama
     GET    /models              modelos que sabe generar
+    POST   /inputs              sube una imagen de entrada (cuerpo = bytes) → {name}
     POST   /generate            encola una imagen → {id, status, seed, ...} (202)
     GET    /jobs/{id}           estado / progreso estimado
     GET    /jobs/{id}/image     PNG terminado
     DELETE /jobs/{id}           Lumora ya la guardó: se borra de la PC
 
 /generate responde enseguida y Lumora consulta /jobs/{id}: así ningún request
-queda abierto más de ~100 s, que es donde Cloudflare corta.
+queda abierto más de ~100 s, que es donde Cloudflare corta. Para editar, Lumora
+sube antes cada imagen a /inputs (una por request) y pasa los nombres en "images".
 
 Correr con:
     uvicorn lumora_gateway.app:app --host 127.0.0.1 --port 8766 --timeout-keep-alive 120
@@ -89,6 +91,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
         height: int = 1024
         seed: int | None = None
         steps: int | None = None
+        images: list[str] = Field(default_factory=list, max_length=3)
 
     @app.get("/health", dependencies=[Depends(auth)])
     async def health(manager: Manager, request: Request):
@@ -100,6 +103,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
                 "pending": manager.pending_count(),
                 "running": manager.current is not None,
                 "avg_seconds": round(manager.avg_seconds(), 1) if manager.avg_seconds() else None,
+                "avg_seconds_by_model": manager.avg_by_model(),
             },
             "models": list(MODELS),
             "models_in_vram": manager.models_loaded,
@@ -133,9 +137,27 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
                 "min_side": m.min_side,
                 "max_side": m.max_side,
                 "side_multiple": m.side_multiple,
+                "min_images": m.min_images,
+                "max_images": m.max_images,
             }
             for m in MODELS.values()
         ]
+
+    @app.post("/inputs", status_code=201, dependencies=[Depends(auth)])
+    async def upload_input(request: Request, manager: Manager):
+        data = await request.body()
+        if not data:
+            raise HTTPException(422, "No llegó ninguna imagen.")
+        if len(data) > settings.max_input_bytes:
+            raise HTTPException(413, "La imagen es demasiado grande.")
+        ext = sniff_image(data)
+        if ext is None:
+            raise HTTPException(422, "El archivo no es una imagen PNG, JPEG o WebP.")
+        try:
+            name = await manager.store_input(data, ext)
+        except Exception as exc:  # noqa: BLE001 — ComfyUI cerrado o rechazó la imagen
+            raise HTTPException(503, "ComfyUI no pudo recibir la imagen.") from exc
+        return {"name": name, "bytes": len(data)}
 
     @app.post("/generate", status_code=202, dependencies=[Depends(auth)])
     async def generate(body: GenerateBody, manager: Manager):
@@ -151,7 +173,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             raise HTTPException(422, str(exc)) from exc
         except QueueFull as exc:
             raise HTTPException(429, str(exc)) from exc
-        return job.public(manager.position(job), manager.avg_seconds())
+        return job.public(manager.position(job), manager.avg_seconds(job.request.model))
 
     def find(manager: JobManager, job_id: str):
         job = manager.get(job_id)
@@ -162,7 +184,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
     @app.get("/jobs/{job_id}", dependencies=[Depends(auth)])
     async def job_status(job_id: str, manager: Manager):
         job = find(manager, job_id)
-        return job.public(manager.position(job), manager.avg_seconds())
+        return job.public(manager.position(job), manager.avg_seconds(job.request.model))
 
     @app.get("/jobs/{job_id}/image", dependencies=[Depends(auth)])
     async def job_image(job_id: str, manager: Manager):
@@ -185,6 +207,17 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
         return Response(status_code=204)
 
     return app
+
+
+def sniff_image(data: bytes) -> str | None:
+    """Extensión según los primeros bytes (no se confía en lo que diga el cliente)."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    return None
 
 
 app = create_app()

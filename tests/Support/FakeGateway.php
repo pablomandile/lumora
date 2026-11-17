@@ -70,12 +70,25 @@ class FakeGateway
 
         return match (true) {
             $path === '/health' => Http::response($this->health, $this->healthStatus),
+            $path === '/inputs' => $this->input($request),
             $path === '/generate' => $this->submit($request),
             $path === '/jobs/job-1' && $request->method() === 'DELETE' => Http::response(null, 204),
             $path === '/jobs/job-1' => $this->status(),
             $path === '/jobs/job-1/image' => Http::response($this->png, 200, ['Content-Type' => 'image/png', 'X-Seed' => '123']),
             default => Http::response(['detail' => 'Not Found'], 404),
         };
+    }
+
+    /** Imágenes recibidas en POST /inputs, por nombre. */
+    public array $inputs = [];
+
+    private function input(Request $request)
+    {
+        $body = $request->body();
+        $name = substr(hash('sha256', $body), 0, 40).'.jpg';
+        $this->inputs[$name] = $body;
+
+        return Http::response(['name' => $name, 'bytes' => strlen($body)], 201);
     }
 
     private function submit(Request $request)

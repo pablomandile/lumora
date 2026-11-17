@@ -2,14 +2,20 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Attachment;
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreGenerationRequest extends FormRequest
 {
     // La seed tiene que entrar en un número de JavaScript sin perder precisión.
     public const MAX_SEED = 9007199254740991;
+
+    /** Fotos de celular: unos 10 MB como mucho. Se reducen al guardarlas. */
+    public const MAX_UPLOAD_KB = 15 * 1024;
 
     /** @return array<string, ValidationRule|array<mixed>|string> */
     public function rules(): array
@@ -31,6 +37,52 @@ class StoreGenerationRequest extends FormRequest
             'height' => ['nullable', 'required_if:aspect,custom', 'integer', 'min:256', "max:{$max}"],
             'seed' => ['nullable', 'integer', 'min:0', 'max:'.self::MAX_SEED],
             'steps' => ['nullable', 'integer', 'min:1', 'max:50'],
+            // Imágenes para editar, en este orden: de la galería, ya subidas
+            // (otra variante, reintentar) y fotos nuevas. Entre todas, hasta 3.
+            'image_ids' => ['nullable', 'array', 'max:'.Attachment::MAX_PER_GENERATION],
+            'image_ids.*' => [
+                'string', 'distinct',
+                Rule::exists('images', 'id')->where('user_id', $this->user()?->id)->whereNull('deleted_at'),
+            ],
+            'attachment_ids' => ['nullable', 'array', 'max:'.Attachment::MAX_PER_GENERATION],
+            'attachment_ids.*' => [
+                'string', 'distinct',
+                Rule::exists('attachments', 'id')->where('user_id', $this->user()?->id),
+            ],
+            'images' => ['nullable', 'array', 'max:'.Attachment::MAX_PER_GENERATION],
+            'images.*' => ['file', 'image', 'mimes:jpeg,png,webp', 'max:'.self::MAX_UPLOAD_KB],
+        ];
+    }
+
+    /** @return array<int, Closure(Validator): void> */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($this->referenceCount() > Attachment::MAX_PER_GENERATION) {
+                    $validator->errors()->add('images', 'Podés usar hasta '.Attachment::MAX_PER_GENERATION.' imágenes por pedido.');
+                }
+            },
+        ];
+    }
+
+    /** Cuántas imágenes de entrada trae el pedido, sumando las tres fuentes. */
+    public function referenceCount(): int
+    {
+        return count((array) $this->input('image_ids', []))
+            + count((array) $this->input('attachment_ids', []))
+            + count((array) $this->file('images', []));
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'images.*.image' => 'Ese archivo no es una imagen.',
+            'images.*.mimes' => 'Las imágenes tienen que ser JPG, PNG o WebP.',
+            'images.*.max' => 'Cada imagen puede pesar hasta '.(self::MAX_UPLOAD_KB / 1024).' MB.',
+            'image_ids.*.exists' => 'Esa imagen ya no está disponible.',
+            'attachment_ids.*.exists' => 'Una de las imágenes ya no está disponible.',
         ];
     }
 

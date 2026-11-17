@@ -9,6 +9,7 @@ import {
     Heart,
     Repeat,
     Trash2,
+    Wand,
 } from '@lucide/vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -33,11 +34,14 @@ const props = defineProps<{
     images: ImageItem[];
     /** Props de la página a recargar después de marcar favorita o borrar. */
     reload: string[];
+    /** Muestra "Editar esta imagen" (hay un modelo de edición disponible). */
+    canEdit?: boolean;
 }>();
 
 const emit = defineEmits<{
     reuse: [preset: PromptPreset];
     vary: [image: ImageItem];
+    edit: [image: ImageItem];
     favorited: [image: ImageItem, value: boolean];
     deleted: [image: ImageItem];
 }>();
@@ -179,6 +183,8 @@ function reuse(withSeed: boolean): void {
         prompt: image.value.prompt,
         aspect: image.value.aspect,
         seed: withSeed ? image.value.seed : null,
+        model: image.value.model,
+        attachments: image.value.attachments,
     });
     openId.value = null;
 }
@@ -186,6 +192,13 @@ function reuse(withSeed: boolean): void {
 function vary(): void {
     if (image.value) {
         emit('vary', image.value);
+        openId.value = null;
+    }
+}
+
+function edit(): void {
+    if (image.value) {
+        emit('edit', image.value);
         openId.value = null;
     }
 }
@@ -358,6 +371,16 @@ function vary(): void {
                     <Button variant="outline" data-test="vary" @click="vary">
                         <Dices />
                         Otra variante
+                    </Button>
+                    <Button
+                        v-if="canEdit"
+                        variant="outline"
+                        class="col-span-2"
+                        data-test="edit"
+                        @click="edit"
+                    >
+                        <Wand />
+                        Editar esta imagen
                     </Button>
                     <Button
                         v-if="image.seed !== null"

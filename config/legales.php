@@ -9,7 +9,7 @@ return [
      * que hay que hacer cada vez que cambia algo importante de los textos de
      * `resources/legales/`. Un cambio de redacción que no cambia nada no la sube.
      */
-    'version' => '2026-11-10',
+    'version' => '2026-11-16',
 
     // Mail de contacto que figura en los textos.
     'contacto' => env('LUMORA_CONTACT_EMAIL', env('LUMORA_ADMIN_EMAIL', 'pablo.mandile@gmail.com')),

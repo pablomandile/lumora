@@ -7,10 +7,12 @@ use Database\Factories\GenerationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
@@ -41,6 +43,7 @@ use Illuminate\Support\Carbon;
  * @property-read User $user
  * @property-read Conversation|null $conversation
  * @property-read Image|null $image
+ * @property-read Collection<int, Attachment> $attachments
  */
 #[Fillable([
     'user_id', 'conversation_id', 'prompt', 'negative_prompt', 'model', 'width', 'height', 'aspect', 'steps', 'seed',
@@ -87,6 +90,16 @@ class Generation extends Model
     public function image(): HasOne
     {
         return $this->hasOne(Image::class);
+    }
+
+    /**
+     * Imágenes de entrada, en orden (la primera es la que se edita).
+     *
+     * @return BelongsToMany<Attachment, $this>
+     */
+    public function attachments(): BelongsToMany
+    {
+        return $this->belongsToMany(Attachment::class)->withPivot('position')->orderByPivot('position');
     }
 
     /**

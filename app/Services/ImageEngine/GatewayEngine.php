@@ -89,6 +89,24 @@ class GatewayEngine implements ImageEngine
         );
     }
 
+    public function uploadInput(string $bytes): string
+    {
+        // Una imagen por request y ya reducida (~1 MB): lejos del corte de Cloudflare.
+        $response = $this->send(
+            fn (PendingRequest $http) => $http->timeout(max($this->timeout, 60))
+                ->withBody($bytes, 'application/octet-stream')
+                ->post('/inputs'),
+        );
+
+        $name = $response->json('name');
+
+        if (! is_string($name) || $name === '') {
+            throw new GpuUnavailableException('La placa no confirmó la imagen subida.');
+        }
+
+        return $name;
+    }
+
     public function submit(array $request): RemoteJob
     {
         $payload = array_filter([
@@ -99,7 +117,8 @@ class GatewayEngine implements ImageEngine
             'height' => $request['height'],
             'seed' => $request['seed'] ?? null,
             'steps' => $request['steps'] ?? null,
-        ], fn ($v) => $v !== null && $v !== '');
+            'images' => $request['images'] ?? [],
+        ], fn ($v) => $v !== null && $v !== '' && $v !== []);
 
         return RemoteJob::fromArray($this->send(fn (PendingRequest $http) => $http->post('/generate', $payload))->json());
     }
@@ -169,7 +188,7 @@ class GatewayEngine implements ImageEngine
         return match (true) {
             $response->successful() => $response,
             $response->status() === 404 => throw new RemoteJobNotFoundException($detail ?? 'El trabajo no existe en la placa.'),
-            in_array($response->status(), [400, 422], true) => throw new GenerationRejectedException($detail ?? 'La placa rechazó el pedido.'),
+            in_array($response->status(), [400, 413, 422], true) => throw new GenerationRejectedException($detail ?? 'La placa rechazó el pedido.'),
             in_array($response->status(), [401, 403], true) => throw new GpuUnavailableException('La placa rechazó el token.'),
             $response->status() === 429 => throw new GpuUnavailableException($detail ?? 'La cola de la placa está llena.'),
             default => throw new GpuUnavailableException('La placa respondió con error '.$response->status().'.'),

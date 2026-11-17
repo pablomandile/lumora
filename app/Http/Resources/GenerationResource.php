@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Attachment;
 use App\Models\Generation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -35,6 +36,15 @@ class GenerationResource extends JsonResource
             'error' => $this->error,
             'created_at' => $this->created_at?->toIso8601String(),
             'image' => $image ? (new ImageResource($image))->resolve($request) : null,
+            'attachments' => $this->relationLoaded('attachments')
+                ? $this->attachments->map(fn (Attachment $a) => [
+                    'id' => $a->id,
+                    'url' => route('attachments.show', $a),
+                    'thumb_url' => route('attachments.thumb', $a),
+                    'width' => $a->width,
+                    'height' => $a->height,
+                ])->values()->all()
+                : [],
         ];
     }
 }

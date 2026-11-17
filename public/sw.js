@@ -55,6 +55,7 @@ function isPrivate(url, request) {
     return (
         request.headers.has('X-Inertia') ||
         url.pathname.startsWith('/imagenes/') ||
+        url.pathname.startsWith('/adjuntos/') ||
         url.pathname.startsWith('/placa/') ||
         url.pathname.startsWith('/admin/')
     );

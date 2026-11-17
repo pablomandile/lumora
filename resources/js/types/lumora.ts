@@ -18,6 +18,17 @@ export type ImageItem = {
     seed: number | null;
     steps: number | null;
     run_seconds: number | null;
+    /** Imágenes de entrada de la edición que la produjo (vacío si no fue una edición). */
+    attachments: ReferenceThumb[];
+};
+
+/** Una imagen de entrada, ya guardada, con su miniatura. */
+export type ReferenceThumb = { id: string; thumb_url: string };
+
+export type AttachmentItem = ReferenceThumb & {
+    url: string;
+    width: number;
+    height: number;
 };
 
 /** Una conversación del estudio, como aparece en el menú. */
@@ -49,6 +60,8 @@ export type GenerationItem = {
     error: string | null;
     created_at: string | null;
     image: ImageItem | null;
+    /** Imágenes de entrada, en orden (la primera es la que se edita). */
+    attachments: AttachmentItem[];
 };
 
 export type AspectOption = { key: string; width: number; height: number };
@@ -58,6 +71,10 @@ export type ModelOption = {
     label: string;
     default_steps: number;
     max_steps: number;
+    /** 0 = texto a imagen. Los de edición necesitan al menos 1. */
+    min_images: number;
+    max_images: number;
+    description: string | null;
 };
 
 export type Quota = {
@@ -71,4 +88,7 @@ export type PromptPreset = {
     prompt: string;
     aspect?: string | null;
     seed?: number | null;
+    model?: string | null;
+    /** Imágenes de entrada ya guardadas (otra edición con las mismas). */
+    attachments?: ReferenceThumb[];
 };

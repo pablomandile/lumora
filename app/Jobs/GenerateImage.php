@@ -13,6 +13,7 @@ use App\Services\Images\ImageStore;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use Throwable;
 
@@ -91,6 +92,7 @@ class GenerateImage implements ShouldQueue
                 'height' => $generation->height,
                 'seed' => $generation->seed,
                 'steps' => $generation->steps,
+                'images' => $this->uploadInputs($engine, $generation),
             ]);
         } catch (RemoteJobNotFoundException) {
             // Un 404 al encolar: la URL no apunta al gateway de Lumora.
@@ -99,6 +101,30 @@ class GenerateImage implements ShouldQueue
 
         $generation->forceFill(['remote_job_id' => $remote->id, 'error' => null])->save();
         $this->sync($generation, $remote);
+    }
+
+    /**
+     * Sube las imágenes de entrada justo antes de encolar. Se suben en cada
+     * intento: si el gateway se reinició, ya no las tiene (y el nombre es el
+     * hash del contenido, así que repetir no duplica nada).
+     *
+     * @return list<string>
+     */
+    private function uploadInputs(ImageEngine $engine, Generation $generation): array
+    {
+        $names = [];
+
+        foreach ($generation->attachments as $attachment) {
+            $bytes = Storage::disk('local')->get($attachment->path);
+
+            if ($bytes === null) {
+                throw new GenerationRejectedException('Una de las imágenes de entrada ya no está disponible.');
+            }
+
+            $names[] = $engine->uploadInput($bytes);
+        }
+
+        return $names;
     }
 
     private function follow(ImageEngine $engine, ImageStore $store, Generation $generation): void

@@ -16,9 +16,19 @@ interface ImageEngine
     public function health(): GpuStatus;
 
     /**
+     * Sube una imagen de entrada (para editar) y devuelve el nombre con que
+     * se la referencia en `submit(['images' => [...]])`. Subir la misma
+     * imagen dos veces devuelve el mismo nombre.
+     *
+     * @throws GpuUnavailableException
+     * @throws GenerationRejectedException si la placa no la acepta como imagen
+     */
+    public function uploadInput(string $bytes): string;
+
+    /**
      * Encola un pedido y devuelve el trabajo remoto.
      *
-     * @param  array{model: string, prompt: string, negative_prompt?: string|null, width: int, height: int, seed?: int|null, steps?: int|null}  $request
+     * @param  array{model: string, prompt: string, negative_prompt?: string|null, width: int, height: int, seed?: int|null, steps?: int|null, images?: list<string>}  $request
      *
      * @throws GpuUnavailableException si la placa no responde (se reintenta más tarde)
      * @throws GenerationRejectedException si el pedido es inválido (no tiene sentido reintentar)

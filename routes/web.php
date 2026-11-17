@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StatsController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\GalleryController;
@@ -65,6 +66,9 @@ Route::middleware(['auth', 'verified', 'approved'])->group(function () {
         ->name('images.download');
     Route::patch('imagenes/{image}/favorita', [ImageController::class, 'favorite'])->name('images.favorite');
     Route::delete('imagenes/{image}', [ImageController::class, 'destroy'])->name('images.destroy');
+
+    Route::get('adjuntos/{attachment}', [AttachmentController::class, 'show'])->name('attachments.show');
+    Route::get('adjuntos/{attachment}/miniatura', [AttachmentController::class, 'thumb'])->name('attachments.thumb');
 
     Route::get('placa/estado', GpuStatusController::class)->name('gpu.status');
 });

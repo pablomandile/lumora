@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\ImageResource;
+use App\Models\AiModel;
 use App\Models\Image;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -22,7 +23,7 @@ class GalleryController extends Controller
         $favorites = $request->boolean('favoritas');
 
         $images = $user->images()
-            ->with('generation')
+            ->with('generation.attachments')
             ->when($favorites, fn ($q) => $q->where('favorite', true))
             ->when($search !== '', function ($q) use ($search) {
                 $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $search).'%';
@@ -38,6 +39,8 @@ class GalleryController extends Controller
             'images' => Inertia::scroll($images),
             'filters' => ['q' => $search, 'favoritas' => $favorites],
             'total' => $user->images()->count(),
+            // Para mostrar "Editar esta imagen" solo si tiene un modelo de edición.
+            'can_edit' => AiModel::query()->availableFor($user)->get()->contains(fn (AiModel $m) => $m->editsImages()),
         ]);
     }
 }

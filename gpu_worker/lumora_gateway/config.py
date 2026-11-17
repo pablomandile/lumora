@@ -38,6 +38,13 @@ class Settings:
     # Carpeta "output" de ComfyUI. Si está definida, el gateway borra las
     # imágenes una vez que Lumora las descargó.
     comfy_output_dir: str = field(default_factory=lambda: os.environ.get("COMFY_OUTPUT_DIR", ""))
+    # Carpeta "input" de ComfyUI. Si está definida, el gateway borra las
+    # imágenes de entrada (fotos de los usuarios) cuando ya no hacen falta.
+    comfy_input_dir: str = field(default_factory=lambda: os.environ.get("COMFY_INPUT_DIR", ""))
+    # Tamaño máximo de una imagen de entrada (Lumora ya las manda reducidas).
+    max_input_bytes: int = field(default_factory=lambda: _int("MAX_INPUT_BYTES", 20 * 1024 * 1024))
+    # Las entradas que ningún trabajo usa se borran pasado este tiempo.
+    input_ttl_seconds: int = field(default_factory=lambda: _int("INPUT_TTL_SECONDS", 3600))
 
     ollama_url: str = field(default_factory=lambda: os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/"))
     # Si la VRAM libre es menor a esto (GB) antes de generar, se le pide a
@@ -60,6 +67,15 @@ class Settings:
     zimage_unet: str = field(default_factory=lambda: os.environ.get("ZIMAGE_UNET", "z_image_turbo_int8_convrot.safetensors"))
     zimage_clip: str = field(default_factory=lambda: os.environ.get("ZIMAGE_CLIP", "qwen_3_4b_fp8_mixed.safetensors"))
     zimage_vae: str = field(default_factory=lambda: os.environ.get("ZIMAGE_VAE", "ae.safetensors"))
+
+    # Qwen-Image-Edit-2511 (GGUF, necesita el custom node ComfyUI-GGUF). La LoRA
+    # Lightning está apareada con esta versión del unet: cambiar uno obliga a cambiar la otra.
+    qwen_edit_unet: str = field(default_factory=lambda: os.environ.get("QWEN_EDIT_UNET", "qwen-image-edit-2511-Q4_K_M.gguf"))
+    qwen_edit_lora: str = field(
+        default_factory=lambda: os.environ.get("QWEN_EDIT_LORA", "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors")
+    )
+    qwen_clip: str = field(default_factory=lambda: os.environ.get("QWEN_CLIP", "qwen_2.5_vl_7b_fp8_scaled.safetensors"))
+    qwen_vae: str = field(default_factory=lambda: os.environ.get("QWEN_VAE", "qwen_image_vae.safetensors"))
 
 
 def get_settings() -> Settings:
