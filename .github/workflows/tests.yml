@@ -13,6 +13,22 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    # `composer setup` corre `artisan migrate` con la base de .env.example
+    # (MySQL, root sin clave). Los tests usan sqlite en memoria (phpunit.xml).
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: lumora
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
