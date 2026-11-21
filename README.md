@@ -22,6 +22,19 @@ Lumora es un estudio de imágenes con IA al estilo de un chat: escribís lo que 
 
 La app está pensada para un grupo chico: cada persona se registra, el administrador la aprueba y desde ese momento tiene una cuota diaria de imágenes privadas.
 
+![Galería de Lumora con imágenes generadas en la placa propia](.github/screenshots/galeria.png)
+
+<table>
+  <tr>
+    <td width="50%"><img src=".github/screenshots/estudio.png" alt="El estudio: el pedido como mensaje y la imagen como respuesta"></td>
+    <td width="50%"><img src=".github/screenshots/portada.png" alt="Portada de Lumora"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>El estudio: cada pedido es un mensaje y la imagen es la respuesta</sub></td>
+    <td align="center"><sub>La portada</sub></td>
+  </tr>
+</table>
+
 ## ✨ Qué se puede hacer
 
 - **Generar desde texto** con [Z-Image Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo): fotorrealista, escribe texto dentro de la imagen y tarda unos 16 s por imagen en una RTX 3060.
