@@ -317,7 +317,7 @@ function edit(): void {
                     </template>
                     <dt class="text-muted-foreground">Modelo</dt>
                     <dd>
-                        {{ image.model
+                        {{ image.model_label
                         }}<template v-if="image.steps">
                             · {{ image.steps }} pasos</template
                         >

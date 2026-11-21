@@ -5,6 +5,7 @@ import {
     Dices,
     ImagePlus,
     SlidersHorizontal,
+    Sparkles,
     Wand,
     X,
 } from '@lucide/vue';
@@ -233,6 +234,15 @@ const quotaText = computed(() => {
     }
 
     return `Te ${remaining === 1 ? 'queda' : 'quedan'} ${remaining} de ${limit} hoy`;
+});
+
+// En el celular la barra no da para la frase entera junto al modelo.
+const quotaShort = computed(() => {
+    const { limit, remaining } = props.quota;
+
+    return limit === null || remaining === null
+        ? null
+        : `${remaining}/${limit}`;
 });
 
 function autosize(): void {
@@ -509,7 +519,10 @@ defineExpose({ fill, editImage });
             Adjuntá la imagen que querés editar.
         </p>
 
-        <div class="flex items-center gap-1.5 px-2 pt-1 pb-2">
+        <!-- En el celular, menos aire entre botones para que el modelo se lea entero. -->
+        <div
+            class="flex items-center gap-1 px-1.5 pt-1 pb-2 sm:gap-1.5 sm:px-2"
+        >
             <template v-if="editModels.length">
                 <input
                     ref="fileInput"
@@ -526,7 +539,7 @@ defineExpose({ fill, editImage });
                     type="button"
                     variant="ghost"
                     size="sm"
-                    class="gap-1.5 rounded-full px-2.5"
+                    class="gap-1.5 rounded-full px-2 sm:px-2.5"
                     :disabled="references.length >= maxReferences"
                     data-test="attach"
                     @click="pickFiles"
@@ -537,22 +550,24 @@ defineExpose({ fill, editImage });
             </template>
 
             <span
-                v-if="editing"
-                class="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-full px-2 text-sm text-muted-foreground"
-                data-test="edit-mode"
-                :title="currentModel?.description ?? undefined"
+                v-if="currentModel"
+                class="inline-flex h-8 min-w-0 items-center gap-1 rounded-full px-1 text-xs text-muted-foreground sm:gap-1.5 sm:px-2 sm:text-sm"
+                data-test="model"
+                :data-editing="editing || undefined"
+                :title="currentModel.description ?? currentModel.label"
             >
-                <Wand class="size-4 shrink-0" />
-                <span class="truncate">{{ currentModel?.label }}</span>
+                <Wand v-if="editing" class="size-4 shrink-0" />
+                <Sparkles v-else class="size-4 shrink-0" />
+                <span class="truncate">{{ currentModel.label }}</span>
             </span>
 
-            <DropdownMenu v-else>
+            <DropdownMenu v-if="!editing">
                 <DropdownMenuTrigger as-child>
                     <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        class="gap-1.5 rounded-full px-2.5"
+                        class="gap-1.5 rounded-full px-2 sm:px-2.5"
                         data-test="aspect"
                         :aria-label="`Relación de aspecto: ${form.aspect === 'custom' ? 'libre' : form.aspect}`"
                     >
@@ -606,7 +621,7 @@ defineExpose({ fill, editImage });
                 type="button"
                 variant="ghost"
                 size="sm"
-                class="relative gap-1.5 rounded-full px-2.5"
+                class="relative gap-1.5 rounded-full px-2 sm:px-2.5"
                 :aria-expanded="showOptions"
                 data-test="toggle-options"
                 @click="showOptions = !showOptions"
@@ -622,13 +637,17 @@ defineExpose({ fill, editImage });
 
             <span
                 v-if="quotaText"
-                class="ml-auto truncate px-1 text-xs"
+                class="ml-auto shrink-0 px-0.5 text-xs tabular-nums sm:min-w-0 sm:shrink sm:truncate sm:px-1"
                 :class="
                     outOfQuota ? 'text-destructive' : 'text-muted-foreground'
                 "
+                :title="quotaText"
                 data-test="quota"
             >
-                {{ quotaText }}
+                <span class="sm:hidden" aria-hidden="true">{{
+                    quotaShort
+                }}</span>
+                <span class="sr-only sm:not-sr-only">{{ quotaText }}</span>
             </span>
 
             <Button

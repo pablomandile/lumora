@@ -44,6 +44,23 @@ class AiModel extends Model
             ->orderBy('sort');
     }
 
+    /**
+     * Nombre visible de cada modelo, por clave (incluidos los deshabilitados,
+     * que siguen apareciendo en imágenes viejas). Se consulta una vez por request.
+     *
+     * @return array<string, string>
+     */
+    public static function labels(): array
+    {
+        return once(fn () => static::query()->pluck('label', 'key')->all());
+    }
+
+    /** El nombre visible, o la clave si el modelo ya no está en la tabla. */
+    public static function labelFor(string $key): string
+    {
+        return static::labels()[$key] ?? $key;
+    }
+
     public function defaultSteps(): int
     {
         return (int) ($this->defaults['steps'] ?? 9);

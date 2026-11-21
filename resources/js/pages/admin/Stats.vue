@@ -8,6 +8,16 @@ import { stats } from '@/routes/admin';
 
 type DailyPoint = { date: string; done: number; failed: number; other: number };
 
+type ModelRow = {
+    key: string;
+    label: string;
+    requests: number;
+    done: number;
+    failed: number;
+    gpu_seconds: number;
+    avg_seconds: number | null;
+};
+
 type UserRow = {
     id: number;
     name: string;
@@ -40,6 +50,7 @@ const props = defineProps<{
         stored_bytes: number;
     };
     daily: DailyPoint[];
+    models: ModelRow[];
     users: UserRow[];
 }>();
 
@@ -62,6 +73,13 @@ function duration(seconds: number | null): string {
         return `${s} s`;
     }
 
+    // Por debajo de 10 minutos los segundos importan (una edición tarda ~70 s).
+    if (s < 600) {
+        return s % 60
+            ? `${Math.floor(s / 60)} min ${s % 60} s`
+            : `${s / 60} min`;
+    }
+
     const minutes = Math.round(s / 60);
 
     if (minutes < 60) {
@@ -72,6 +90,10 @@ function duration(seconds: number | null): string {
     const m = minutes % 60;
 
     return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+function failedText(count: number): string {
+    return `${count} ${count === 1 ? 'falló' : 'fallaron'}`;
 }
 
 function bytes(value: number): string {
@@ -128,6 +150,12 @@ const failRate = computed(() =>
           )
         : 0,
 );
+
+function share(model: ModelRow): number {
+    return props.totals.requests
+        ? Math.round((model.requests / props.totals.requests) * 100)
+        : 0;
+}
 
 const tiles = computed(() => [
     {
@@ -243,7 +271,8 @@ const axisDates = computed(() => {
                             >· {{ hoveredPoint.done }} listos<template
                                 v-if="hoveredPoint.failed"
                             >
-                                · {{ hoveredPoint.failed }} fallaron</template
+                                ·
+                                {{ failedText(hoveredPoint.failed) }}</template
                             ></span
                         >
                     </p>
@@ -320,6 +349,60 @@ const axisDates = computed(() => {
                     </tr>
                 </tbody>
             </table>
+        </section>
+
+        <section class="flex flex-col gap-3" aria-labelledby="models-title">
+            <h2 id="models-title" class="text-sm font-medium">
+                Uso por modelo
+                <span class="font-normal text-muted-foreground"
+                    >· en el período</span
+                >
+            </h2>
+
+            <p v-if="!models.length" class="text-sm text-muted-foreground">
+                No hubo pedidos en estos días.
+            </p>
+
+            <ul
+                v-else
+                class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                data-test="models"
+            >
+                <li
+                    v-for="model in models"
+                    :key="model.key"
+                    class="flex min-w-0 flex-col gap-2 rounded-xl border p-4"
+                >
+                    <div
+                        class="flex min-w-0 items-baseline justify-between gap-2"
+                    >
+                        <p class="truncate font-medium">{{ model.label }}</p>
+                        <span
+                            class="shrink-0 text-xs text-muted-foreground tabular-nums"
+                            >{{ share(model) }}% de los pedidos</span
+                        >
+                    </div>
+                    <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                        <dt class="text-muted-foreground">Pedidos</dt>
+                        <dd class="text-right tabular-nums">
+                            {{ number.format(model.requests) }}
+                            <span
+                                v-if="model.failed"
+                                class="text-xs text-muted-foreground"
+                                >({{ failedText(model.failed) }})</span
+                            >
+                        </dd>
+                        <dt class="text-muted-foreground">Por imagen</dt>
+                        <dd class="text-right tabular-nums">
+                            {{ duration(model.avg_seconds) }}
+                        </dd>
+                        <dt class="text-muted-foreground">Tiempo de placa</dt>
+                        <dd class="text-right tabular-nums">
+                            {{ duration(model.gpu_seconds) }}
+                        </dd>
+                    </dl>
+                </li>
+            </ul>
         </section>
 
         <section class="flex flex-col gap-3" aria-labelledby="users-title">
@@ -412,7 +495,7 @@ const axisDates = computed(() => {
                                 <span
                                     v-if="user.failed"
                                     class="block text-xs text-muted-foreground"
-                                    >{{ user.failed }} fallaron</span
+                                    >{{ failedText(user.failed) }}</span
                                 >
                             </td>
                             <td class="px-3 py-2 text-right tabular-nums">
@@ -471,7 +554,7 @@ const axisDates = computed(() => {
                             <span
                                 v-if="user.failed"
                                 class="text-xs text-muted-foreground"
-                                >({{ user.failed }} fallaron)</span
+                                >({{ failedText(user.failed) }})</span
                             >
                         </dd>
                         <dt class="text-muted-foreground">Placa</dt>

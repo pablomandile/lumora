@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\AiModel;
 use App\Models\Attachment;
 use App\Models\Generation;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class GenerationResource extends JsonResource
             'id' => $this->id,
             'prompt' => $this->prompt,
             'model' => $this->model,
+            'model_label' => AiModel::labelFor($this->model),
             'width' => $this->width,
             'height' => $this->height,
             'aspect' => $this->aspect,

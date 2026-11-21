@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\AiModel;
 use App\Models\Attachment;
 use App\Models\Image;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ class ImageResource extends JsonResource
             'conversation_id' => $generation->conversation_id,
             'prompt' => $generation->prompt,
             'model' => $generation->model,
+            'model_label' => AiModel::labelFor($generation->model),
             'aspect' => $generation->aspect,
             'seed' => $generation->seed,
             'steps' => $generation->steps,

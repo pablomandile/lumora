@@ -130,6 +130,19 @@ it('la galería lista solo las imágenes propias, con búsqueda y favoritas', fu
         ->assertInertia(fn (Assert $page) => $page->has('images.data', 0));
 });
 
+it('muestra el nombre del modelo, o su clave si ya no existe', function () {
+    $user = User::factory()->create();
+    doneGeneration($user, ['model' => 'qwen-image-edit', 'created_at' => now()->subMinute()]);
+    doneGeneration($user, ['model' => 'un-modelo-borrado']);
+
+    $this->actingAs($user)->get(route('gallery'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('images.data.0.model', 'un-modelo-borrado')
+            ->where('images.data.0.model_label', 'un-modelo-borrado')
+            ->where('images.data.1.model', 'qwen-image-edit')
+            ->where('images.data.1.model_label', 'Qwen Image Edit'));
+});
+
 it('sirve la imagen y la miniatura solo al dueño y al admin', function () {
     $owner = User::factory()->create();
     $image = doneGeneration($owner)->image;

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ApprovalStatus;
 use App\Enums\GenerationStatus;
 use App\Http\Controllers\Controller;
+use App\Models\AiModel;
 use App\Models\Generation;
 use App\Models\Image;
 use App\Models\User;
@@ -17,7 +18,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Uso de la app: totales del período, pedidos por día y uso por usuario.
+ * Uso de la app: totales del período, pedidos por día, uso por modelo y por usuario.
  */
 class StatsController extends Controller
 {
@@ -38,7 +39,7 @@ class StatsController extends Controller
 
         $generations = Generation::query()
             ->where('created_at', '>=', $fromUtc)
-            ->get(['user_id', 'status', 'run_seconds', 'created_at']);
+            ->get(['user_id', 'model', 'status', 'run_seconds', 'created_at']);
 
         $done = $generations->where('status', GenerationStatus::Done);
         $failed = $generations->where('status', GenerationStatus::Failed);
@@ -59,8 +60,36 @@ class StatsController extends Controller
                 'stored_bytes' => (int) Image::sum('bytes'),
             ],
             'daily' => $this->daily($generations, $from, $days),
+            'models' => $this->perModel($generations),
             'users' => $this->perUser($fromUtc),
         ]);
+    }
+
+    /**
+     * Los modelos usados en el período, del más pedido al menos.
+     *
+     * @param  Collection<int, Generation>  $generations
+     * @return list<array{key: string, label: string, requests: int, done: int, failed: int, gpu_seconds: float, avg_seconds: float|int|null}>
+     */
+    private function perModel($generations): array
+    {
+        return array_values($generations
+            ->groupBy('model')
+            ->map(function (Collection $items, string $key): array {
+                $done = $items->where('status', GenerationStatus::Done);
+
+                return [
+                    'key' => $key,
+                    'label' => AiModel::labelFor($key),
+                    'requests' => $items->count(),
+                    'done' => $done->count(),
+                    'failed' => $items->where('status', GenerationStatus::Failed)->count(),
+                    'gpu_seconds' => round((float) $done->sum('run_seconds')),
+                    'avg_seconds' => $done->whereNotNull('run_seconds')->avg('run_seconds'),
+                ];
+            })
+            ->sortByDesc('requests')
+            ->all());
     }
 
     /**

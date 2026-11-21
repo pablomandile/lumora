@@ -14,6 +14,8 @@ export type ImageItem = {
     created_at: string | null;
     prompt: string;
     model: string;
+    /** El nombre del modelo para mostrar (la clave, si ya no existe). */
+    model_label: string;
     aspect: string | null;
     seed: number | null;
     steps: number | null;
@@ -48,6 +50,7 @@ export type GenerationItem = {
     id: string;
     prompt: string;
     model: string;
+    model_label: string;
     width: number;
     height: number;
     aspect: string | null;

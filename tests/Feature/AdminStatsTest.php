@@ -75,6 +75,34 @@ it('cuenta el uso del período, por día y por usuario', function () {
             ->where('users.2.last_seen_at', null));
 });
 
+it('separa el uso por modelo, del más pedido al menos', function () {
+    $user = User::factory()->create();
+
+    Generation::factory()->for($user)->status(GenerationStatus::Done)
+        ->count(2)->create(['model' => 'qwen-image-edit', 'run_seconds' => 70]);
+    Generation::factory()->for($user)->status(GenerationStatus::Failed)
+        ->create(['model' => 'qwen-image-edit']);
+    Generation::factory()->for($user)->status(GenerationStatus::Done)
+        ->create(['model' => 'z-image-turbo', 'run_seconds' => 16]);
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->get(route('admin.stats'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('models', 2)
+            ->where('models.0', [
+                'key' => 'qwen-image-edit',
+                'label' => 'Qwen Image Edit',
+                'requests' => 3,
+                'done' => 2,
+                'failed' => 1,
+                'gpu_seconds' => 140,
+                'avg_seconds' => 70,
+            ])
+            ->where('models.1.label', 'Z-Image Turbo')
+            ->where('models.1.requests', 1)
+            ->where('models.1.avg_seconds', 16));
+});
+
 it('corta los días en la hora argentina', function () {
     $this->travelTo(now()->setDate(2026, 11, 10)->setTime(12, 0));
     $user = User::factory()->create();
